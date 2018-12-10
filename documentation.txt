@@ -1,0 +1,79 @@
+Game Message Protocol:
+
+CLIENT -> SERVER:
+   [ "JOIN", <playername>, <secret> ]
+
+   SERVER -> CLIENT:
+      [ "JOIN-OKAY" ]
+      [ "JOIN-BAD", <reason> ]
+         reason - 2 players connected, you are in spectator mode
+         reason - wrong password
+
+CLIENT -> SERVER:
+   [ "VIEW" ]
+
+   SERVER -> CLIENT:
+      [ "VIEW-OKAY" ]
+      [ "VIEW-BAD", <reason> ]
+
+SERVER -> CLIENT:
+   [ "RACKTILES", "A", "B", "C" ]
+
+SERVER -> CLIENT:
+   [ "BOARDTILES", [
+        [ "P", x, y ],
+        [ "Q", x, y ],
+     ] ]
+
+SERVER -> CLIENT:
+   [ "SCORE", [ <playername1>, <score1> ], [ [ <playername2>, <score2> ] ] ]
+
+SERVER -> CLIENT:
+   [ "TURN", <turn-key>, <playername> ]
+
+   CLIENT -> SERVER:
+      [ "MOVE", [
+            [ "A", x, y ],
+            [ " ", x, y ],
+        ] ]
+
+      SERVER -> CLIENT:
+         [ "MOVE-OKAY", <turn-key> ]
+         [ "MOVE-BAD", <turn-key>, <reason> ]
+            - such as out of turn
+
+   CLIENT -> SERVER:
+      [ "EXCH", <turn-key>, "A", "B" ]
+
+      SERVER -> CLIENT:
+         [ "EXCH-OKAY", <turn-key> ]
+         [ "EXCH-BAD", <turn-key>, <reason> ]
+            - such as out of turn
+
+   CLIENT -> SERVER:
+      [ "PASS", <turn-key> ]
+
+      SERVER -> CLIENT:
+         [ "PASS-OKAY", <turn-key> ]
+         [ "PASS-BAD", <turn-key>, <reason> ]
+
+
+
+------------------------------------------------
+
+
+CLIENT -> SERVER:
+   [ "CONNECTED", <playername>, <secret> ]
+
+SERVER -> CLIENT:
+   [ "RACKTILES", [ "A", "B", "C" ] ]
+
+SERVER -> CLIENT:
+   [ "BOARDTILES", [
+        [ "P", x, y ],
+        [ "Q", x, y ],
+     ] ]
+
+SERVER -> CLIENT:
+   [ "SCORE", [ [ <playername1>, <score1> ], [ <playername2>, <score2> ] ] ]
+

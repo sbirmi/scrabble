@@ -1,0 +1,681 @@
+<!doctype html>
+<html>
+<head>
+
+<style>
+<!--
+body {
+   background: steelblue;
+   overflow: hidden;
+}
+
+.tilescore {
+   position: relative;
+   transform: translate(-5%, -105%);
+
+   font: 14px "Open Sans", sans-serif;
+   text-align: right;
+   z-index: 1;
+}
+
+.tile {
+   position: absolute;
+   background: #e6b988;
+   border-radius: 3px;
+}
+
+.tiletext {
+   font: 3em "Open Sans", sans-serif;
+   text-align: center;
+}
+
+.board {
+   background: black;
+}
+.tw {
+   font: 12px "Open Sans", sans-serif;
+   text-align: center;
+   background: orange;
+}
+
+.dw {
+   font: 12px "Open Sans", sans-serif;
+   text-align: center;
+   background: red;
+}
+
+.tl {
+   font: 12px "Open Sans", sans-serif;
+   text-align: center;
+   background: #06a006;
+}
+
+.dl {
+   font: 12px "Open Sans", sans-serif;
+   text-align: center;
+   background: lightblue;
+}
+
+.home {
+   background: red;
+}
+
+.bl {
+   background: white;
+}
+
+.tileblank {
+   background: #e0ffe0;
+}
+
+.button {
+   height: 65px;
+   font: 2em "Open Sans", sans-serif;
+}
+
+.player {
+   font: 2em "Open Sans", sans-serif;
+}
+
+.noselect {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+-->
+</style>
+
+<script>
+<!--
+
+// globals
+var boardcell = 65;
+var tilewidth = 63;
+
+var playerScoreList = [];
+
+var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
+var racktiles = [ null, null, null, null, null, null, null ];
+var frozentiles = [];
+var rackspotEles = [];
+
+var dragObj = null;
+
+var turntiles = [];
+
+var letterscore = {
+   "A": 1, "B": 3, "C": 3, "D": 2, "E": 1,
+   "F": 4, "G": 2, "H": 4, "I": 1, "J": 8,
+   "K": 5, "L": 1, "M": 3, "N": 1, "O": 1,
+   "P": 3, "Q":10, "R": 1, "S": 1, "T": 1,
+   "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4,
+   "Z":10, " ": 0
+}
+
+function showPlayerScore(plIdx, score) {
+   var scoreUi = document.getElementById("playerscore" + plIdx);
+   scoreUi.innerHTML = score;
+}
+
+function processScoreMessage(scoreMsg) {
+   // Add to local playerScoreList
+   var j = 0;
+   for (var i=1; i<scoreMsg.length; i+=2) {
+      if (playerScoreList.length <= j) {
+         // Add a UI element to show score
+         // for the newly discovered player
+         console.log("adding items");
+         var bottompanel = document.getElementById("bottompanel");
+         var cell = bottompanel.insertCell(-1);
+         cell.style.width = "30px";
+
+         var cell = bottompanel.insertCell(-1);
+         var playername = document.createElement("div");
+         playername.className = "player";
+         playername.id = "playername" + j;
+         playername.innerHTML = scoreMsg[i];
+
+         var playerscore = document.createElement("div");
+         playerscore.className = "player";
+         playerscore.id = "playerscore" + j;
+
+         cell.appendChild(playername);
+         cell.appendChild(playerscore);
+
+         playerScoreList[j] = [ scoreMsg[i], scoreMsg[i+1] ];
+      }
+      j++;
+   }
+}
+
+function showStatus(txt) {
+   if (true) { return; }
+   var el = document.getElementById("status");
+   el.innerHTML = txt + "<br>" + el.innerHTML;
+}
+
+
+function findTileOnBoard(ele) {
+   coords = [ -1, -1 ];
+   for (var r=0; r<15; r++) {
+      var c = boardtiles[r].indexOf(ele);
+      if (c > -1) {
+         return [ r, c ]
+      }
+   }
+   return [ -1, -1 ];
+}
+
+
+function createTile(letter) {
+   var score = letterscore[letter];
+	var tile = document.createElement("div");
+	document.body.appendChild(tile);
+	tile.setAttribute("class", "tile");
+	tile.style.width = tilewidth.toString() + "px";
+	tile.style.height = tilewidth.toString() + "px";
+
+	var tiletext = document.createElement("div");
+   tile.appendChild(tiletext);
+	tiletext.setAttribute("class", "tiletext noselect");
+   tiletext.innerHTML = letter;
+	tiletext.style.width = tilewidth.toString() + "px";
+	tiletext.style.height = tilewidth.toString() + "px";
+
+	var tilescore = document.createElement("div");
+   tile.appendChild(tilescore);
+	tilescore.setAttribute("class", "tilescore noselect");
+   tilescore.innerHTML = score.toString();
+
+   dragElement(tile);
+   return tile;
+}
+
+
+function rackposName(idx) {
+   return "rackpos" + idx.toString();
+}
+
+
+function coordsInRect(x, y, rect) {
+   return (x >= rect.left && x <= rect.right &&
+           y >= rect.top && y <= rect.bottom);
+}
+
+function dropOn(ele, x, y) {
+   // See if we are dropping the tile on the rack
+   var rackEle = document.getElementById("tilerack");
+   var rackEleRect = rackEle.getBoundingClientRect();
+   if (coordsInRect(x, y, rackEleRect)) {
+      for (var i=0; i < rackspotEles.length; i++) {
+         if (coordsInRect(x, y,rackspotEles[i].getBoundingClientRect())) {
+            console.log("Dropping tile at rack spot " + i);
+            setTileInRack(dragObj, i);
+            return true;
+         }
+      }
+   }
+
+   // See if we are droppnig the tile on the board
+   var boardEle = document.getElementById("board");
+   var boardEleRect = boardEle.getBoundingClientRect();
+   if (coordsInRect(x, y, boardEleRect)) {
+      var trs = boardEle.children[0].children;
+      for (var r=0; r<trs.length; r++) {
+         if (coordsInRect(x, y, trs[r].getBoundingClientRect())) {
+            var tds = trs[r].children;
+            for (var c=0; c<tds.length; c++) {
+               if (coordsInRect(x, y, tds[c].getBoundingClientRect())) {
+                  console.log("dropped " + dragObj.innerHTML + " on board at " + c + "," + r);
+
+                  success = setTileOnBoard(dragObj, c, r);
+                  if (success) {
+                     prevIdx = racktiles.indexOf(ele);
+                     if ( prevIdx > -1 ) {
+                        racktiles[prevIdx] = null;
+                     }
+                  }
+                  return success;
+               }
+            }
+         }
+      }
+      return true;
+   }
+   return false;
+}
+
+
+function setTileOnBoard(ele, c, r) {
+   if (c < 0 || c >= 15 || r < 0 || r >= 15) {
+      return false;
+   }
+
+   // Check if there is already a tile here. If so, return False
+   if (boardtiles[r][c]) {
+      return false;
+   }
+   // find old position of the tile on the board and remove from there
+
+   [prevR, prevC] = findTileOnBoard(ele);
+   console.log( prevR + " " + prevC ); 
+   if (prevR > -1) {
+      boardtiles[prevR][prevC] = null;
+   }
+
+   boardtiles[r][c] = ele;
+
+   var boardEle = document.getElementById("board");
+   var targetCell = boardEle.children[0].children[r].children[c];
+   var targetRect = targetCell.getBoundingClientRect();
+   ele.style.top = ( targetRect.top + 2 ) + "px";
+   ele.style.left = ( targetRect.left + 2 ) + "px";
+   return true;
+}
+
+function setTileInRack(ele, idx) {
+   if ( idx < 0 || idx >= 7 || ele == null ) { return; }
+
+   var prevIdx = racktiles.indexOf(ele);
+
+   if (racktiles[idx] == null || prevIdx == idx) {
+      if (prevIdx > -1 && prevIdx != idx) {
+         racktiles[prevIdx] = null;
+      }
+      racktiles[idx] = ele;
+      rackPlaceEle = document.getElementById(rackposName(idx));
+      parentPos = rackPlaceEle.getBoundingClientRect();
+      ele.style.top = ( parentPos.top + 1 ) + "px";
+      ele.style.left = ( parentPos.left + 1 ) + "px";
+
+      return;
+   }
+
+   // The tile is getting added to a spot where we already have a tile.
+
+   // See if the tile is picked from some place on the left on the rack.
+   // If so, move all tiles to the left
+   if (prevIdx > -1 && prevIdx < idx) {
+      for (var i=prevIdx; i<idx; i++) {
+         racktiles[i] = null;
+         setTileInRack(racktiles[i+1], i);
+      }
+      racktiles[idx] = null;
+      setTileInRack(ele, idx);
+      return;
+   }
+
+   // The tile came from the board
+   if (prevIdx > idx) {
+      for (var i=prevIdx; i>idx; i--) {
+         racktiles[i] = null;
+         setTileInRack(racktiles[i-1], i);
+      }
+      racktiles[idx] = null;
+      setTileInRack(ele, idx);
+      return;
+   }
+
+   // The tile came from the board and we should have a space
+   // somewhere on the rack. Place the tile there
+   blankIdx = racktiles.indexOf( null );
+   if ( blankIdx > -1 ) {
+      setTileInRack(ele, blankIdx);
+      return;
+   }
+
+   console.log("Not sure where the tlie came from!");
+   console.log(ele);
+
+}
+
+function dragElement(ele) {
+   var deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
+   var startTop = 0, startLeft = 0;
+
+   // if this is a frozen tile, dragging isn't allowed
+   if (frozentiles.indexOf(ele) > -1) {
+      return;
+   }
+
+   ele.onmousedown = dragMouseDown;
+   ele.addEventListener("touchstart", dragMouseDown, false);
+   ele.addEventListener("touchmove", elementDrag, false);
+   ele.addEventListener("touchcancel", closeDragElement, false);
+   ele.addEventListener("touchend", closeDragElement, false);
+
+   function dragMouseDown(e) {
+      e = e || window.event;
+      if (e instanceof MouseEvent) {
+         lastX = e.clientX;
+         lastY = e.clientY;
+      } else if (e instanceof TouchEvent) {
+         showStatus("touch event");
+         if (e.changedTouches.length > 0) {
+            var touch = e.changedTouches[0]
+            lastX = touch.pageX;
+            lastY = touch.pageY;
+         } else {
+            return;
+         }
+      } else {
+         return;
+      }
+      dragObj = e.target.parentElement;
+      startTop = dragObj.style.top;
+      startLeft = dragObj.style.left;
+      showStatus( "startLeft,startTop=" + startLeft + "," + startTop );
+      e.preventDefault();
+      document.onmouseup = closeDragElement;
+      document.onmousemove = elementDrag;
+      document.ontouchmove = elementDrag;
+   }
+
+   function elementDrag(e) {
+      e = e || window.event;
+      if (!e || !e.clientX) { return; }
+      e.preventDefault();
+      deltaX = lastX - e.clientX;
+      deltaY = lastY - e.clientY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      dragObj.style.top = (dragObj.offsetTop - deltaY) + "px";
+      dragObj.style.left = (dragObj.offsetLeft - deltaX) + "px";
+//      ele.style.top = (ele.offsetTop - deltaY) + "px";
+//      ele.style.left = (ele.offsetLeft - deltaX) + "px";
+   }
+
+   function closeDragElement(e) {
+      var stopX = e.clientX;
+      var stopY = e.clientY;
+
+      if (e instanceof TouchEvent) {
+         if (e.changedTouches.length > 0) {
+            var touch = e.changedTouches[0]
+            stopX = touch.pageX;
+            stopY = touch.pageY;
+         } else {
+            return;
+         }
+      }
+
+      showStatus("stopped dragging. dropped at " + stopX + " " + stopY);
+      var success = dropOn(dragObj, stopX, stopY);
+      if (!success) {
+         dragObj.style.top = startTop;
+         dragObj.style.left = startLeft;
+      }
+      dragObj = null;
+      document.onmouseup = null;
+      document.onmousemove = null;
+      document.ontouchmove = null;
+   }
+}
+
+-->
+</script>
+
+</head>
+<body>
+
+<table border=0 width=100%>
+<tr><td align=center>
+   <!-- board -->
+   <table id="board" border=0></table>
+
+   <table border=0>
+   <tr id="bottompanel">
+      <td>
+         <!-- tile rack -->
+         <table id="tilerack" border=0 align=center></table>
+         <!-- buttons -->
+         <table align=center>
+         <tr>
+            <td>
+               <input type=button id="passbutton" class="button" value="EXCH" disabled=True>
+            </td>
+            <td>
+               <input type=button id="passbutton" class="button" value="SHUF" disabled=True>
+            </td>
+            <td>
+               <input type=button id="passbutton" class="button" value="PASS" disabled=True>
+            </td>
+            <td>
+               <input type=button id="playbutton" class="button" value="PLAY" disabled=True>
+            </td>
+         </tr>
+         </table>
+      </td>
+   </tr>
+   </table>
+
+
+   <!-- score -->
+<!--
+      <td class="player">
+         <span id="name1">waiting..</span> (<span id="score1">0</span>)
+      </td>
+      <td width=30px></td>
+      <td width=30px></td>
+      <td class="player">
+         <span id="name2">waiting..</span> (<span id="score2">0</span>)
+      </td>
+-->
+
+
+</td></tr>
+</table>
+
+<table id=connectpanel>
+   <tr>
+      <td><input type=button value="Connect as viewer" onclick="connect_as_viewer();"></td>
+      <td>
+         <input id=name size=8>
+         <input id=password size=8>
+         <input type=button value="Join" onclick="connect_as_player();">
+      </td>
+   </tr>
+</table>
+
+<script>
+<!--
+var table = document.getElementById("board");
+
+var style = [
+   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "tw", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
+   [ "bl", "dw", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "dw", "bl" ],
+   [ "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl" ],
+   [ "dl", "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl", "dl" ],
+   [ "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl" ],
+   [ "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl" ],
+   [ "bl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "bl" ],
+   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "home", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
+   [ "bl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "bl" ],
+   [ "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl" ],
+   [ "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl" ],
+   [ "dl", "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl", "dl" ],
+   [ "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl" ],
+   [ "bl", "dw", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "dw", "bl" ],
+   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "tw", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
+   ];
+
+var boardcells = []
+
+for (var r=0; r<15; r++) {
+   var row = table.insertRow(r);
+   var rowcells = []
+   
+   for (var c=0; c<15; c++) {
+      var cell = row.insertCell(c);
+      cell.setAttribute("class", style[r][c] + " noselect");
+      cell.style.width = boardcell.toString() + "px";
+      cell.style.height = boardcell.toString() + "px";
+
+      rowcells.push(cell);
+
+      if ( style[r][c] == "tw" ) {
+         var textnode = document.createTextNode("Triple Word Score");
+         cell.appendChild(textnode);
+      } else if ( style[r][c] == "dw" ) {
+         var textnode = document.createTextNode("Double Word Score");
+         cell.appendChild(textnode);
+      } else if ( style[r][c] == "tl" ) {
+         var textnode = document.createTextNode("Triple Letter Score");
+         cell.appendChild(textnode);
+      } else if ( style[r][c] == "dl" ) {
+         var textnode = document.createTextNode("Double Letter Score");
+         cell.appendChild(textnode);
+      }
+
+   }
+
+   boardcells.push(rowcells);
+}
+
+
+var tilerackEle = document.getElementById("tilerack");
+var tilerackrowEle = tilerackEle.insertRow(0);
+
+for (var i=0; i<7; i++) {
+   var cell = tilerackrowEle.insertCell(i);
+   cell.setAttribute("class", "tileblank noselect");
+   cell.id = rackposName(i);
+   cell.style.width = tilewidth.toString() + "px";
+   cell.style.height = tilewidth.toString() + "px";
+   rackspotEles.push(cell);
+}
+</script>
+
+<script>
+// WEB-SOCKET
+
+/*
+State
+   0 = uninitialized
+   1 = waiting for ack on viewer
+   2 = viewer
+   3 = waiting to connect as player
+   4 = waiting for game to start
+   5 = your turn
+   6 = other's turn
+   7 = game over
+*/
+var ClientState = Object.freeze({
+   "start": 0,
+   "wait_viewer_ack": 1,
+   "viewer": 2,
+   "wait_join_ack": 3,
+   "wait_game_start": 4,
+   "turn": 5,
+   "wait_turn": 6,
+   "game_over": 7});
+   
+var state = ClientState.start;
+
+var sock = new WebSocket("ws://hyp:5012/");
+sock.onopen = function (event) {
+   console.log("connected to server");
+   console.log(event);
+}
+sock.onerror = function (event) {
+   console.log("error");
+   console.log(event);
+}
+sock.onmessage = function (event) {
+   var msg = JSON.parse(event.data);
+   console.log("Client state=" + state + " msg=" + msg);
+
+   if (state == ClientState.start) {
+      // ignore all messages
+      return;
+   } else if (state == ClientState.wait_viewer_ack) {
+      // viewer mode
+      if (msg[0] == "VIEW-OKAY") {
+         state = ClientState.viewer;
+         return;
+      } else if (msg[0] == "VIEW-BAD") {
+         alert(msg[1]);
+         state = ClientState.start;
+         show_connect_panel();
+         return;
+      } else {
+         // ignore all other messages
+      }
+      return;
+   } else if (state == ClientState.wait_join_ack) {
+      // connecting as player
+      if (msg[0] == "JOIN-OKAY") {
+         state = ClientState.wait_game_start;
+         return;
+      } else if (msg[0] == "JOIN-BAD") {
+         state = ClientState.start;
+         show_connect_panel();
+         return;
+      } else {
+         // ignore all other messages
+      }
+      return;
+   }
+
+   if (msg[0] == "SCORE") {
+      processScoreMessage(msg);
+
+      for (var i=0; i<playerScoreList.length; i++) {
+         showPlayerScore(i, playerScoreList[i][1]);
+      }
+   }
+}
+
+
+function show_connect_panel() {
+   document.getElementById("connectpanel").style.display = "table";
+}
+
+function hide_connect_panel() {
+   document.getElementById("connectpanel").style.display = "none";
+}
+
+function connect_as_viewer() {
+   sock.send(JSON.stringify( [ "VIEW" ] ));
+   hide_connect_panel();
+   state = ClientState.wait_viewer_ack;
+}
+
+function connect_as_player() {
+   var name = document.getElementById("name").value;
+   var passwd = document.getElementById("password").value;
+
+   if (name == "") {
+      alert("username missing");
+      return;
+   }
+   if (passwd == "") {
+      alert("password missing");
+      return;
+   }
+   sock.send(JSON.stringify( [ "JOIN", name, passwd ] ));
+
+   hide_connect_panel();
+   state = ClientState.wait_join_ack;
+}
+
+
+//setTileInRack( createTile("Z"), 0 );
+//setTileInRack( createTile("A"), 1 );
+//setTileInRack( createTile("F"), 2 );
+//setTileInRack( createTile("Q"), 3 );
+//setTileInRack( createTile("J"), 4 );
+//setTileInRack( createTile("L"), 5 );
+//setTileInRack( createTile("V"), 6 );
+
+-->
+</script>
+
+<div id="status"></div>
+
+</body>
+</html>
