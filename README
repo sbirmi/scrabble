@@ -1,0 +1,8 @@
+Dependencies
+------------
+python-flask
+libjsoncpp-dev (libjsoncpp-doc)
+libboost-dev
+libboost-system-dev
+libboost-thread-dev
+libwebsocketpp-dev (libwebsocketpp-doc)
