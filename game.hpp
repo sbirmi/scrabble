@@ -12,21 +12,21 @@
 #include <string>
 #include <map>
 #include <set>
-#include <tuple>
+#include <utility>
 #include <vector>
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 typedef websocketpp::connection_hdl Handle;
 
 
-typedef std::tuple<const Handle *, std::string> HandleResponse;
+typedef std::pair<const Handle&, std::string> HandleResponse;
 typedef std::vector<HandleResponse> HandleResponseList;
 
 typedef int ClientMode;
 #define ModeIdle     (-2)
 #define ModeViewer   (-1)
 
-typedef std::map<const Handle *, ClientMode> HandleMode;
+typedef std::map<const Handle, ClientMode, std::owner_less<Handle>> HandleMode;
 
 namespace Game {
 
@@ -67,17 +67,19 @@ class Client {
    friend class Player;
 private:
    enum ClientState state;
-   const Handle *hdl;
+   const Handle& hdl;
 public:
-   Client(const Handle* _hdl,
+   Client(const Handle& _hdl,
           ClientState _state) :
       state(_state), hdl(_hdl) {};
 };
 
+typedef std::map<const Handle, Client*, std::owner_less<Handle>> HandleClient;
+
 class Player {
    friend class Inst;
 private:
-   std::set<Client *> clients;
+   HandleClient clients;
    std::string name;
    unsigned int score = 0;
    std::string passwd;
@@ -94,8 +96,7 @@ public:
    state(_state) {};
 
    bool maybeAddClient(Client *);
-   bool maybeRemoveClient(Client *);
-   bool maybeRemoveClient(const Handle *);
+   bool maybeRemoveClient(const Handle &);
 };
 
 class Inst {
@@ -103,7 +104,7 @@ private:
    unsigned int gid;
    const unsigned int max_players = 2;
    std::vector<Player *> players;
-   std::set<Client *> viewers;
+   HandleClient viewers;
    HandleMode handleMode;
 
    Json::Reader *jsonReader;

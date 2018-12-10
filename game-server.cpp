@@ -88,13 +88,9 @@ broadcast_server::process_messages() {
 
          auto handleResponses = gi->process_msg(a.hdl, a.msg);
          for (const auto & hdlResponse : handleResponses) {
-            const Handle *hdl;
-            std::string resp;
-            std::tie (hdl, resp) = hdlResponse;
-            m_server.send(*hdl, resp, a.msg->get_opcode());
+            m_server.send(hdlResponse.first, hdlResponse.second, a.msg->get_opcode());
          }
-//         s->send(hdl, resp, a.msg->get_opcode());
-         
+
       } else {
          // undefined.
       }

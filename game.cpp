@@ -9,24 +9,17 @@ using namespace Game;
 bool
 Player::maybeAddClient(Client *cl) {
    // Check if client is already connected. If not, add him now
-   auto resp = clients.insert(cl);
-   return resp.second;
+   clients[cl->hdl] = cl;
+   return true;
 }
 
 bool
-Player::maybeRemoveClient(Client *cl) {
-   return clients.erase(cl);
-}
-bool
-Player::maybeRemoveClient(const Handle *hdl) {
-   for (const auto& cl : clients) {
-      if (cl->hdl == hdl) {
-         std::cerr << "Handle " << hdl << " removed" << std::endl;
-         clients.erase(cl);
-         return true;
-      }
-   }
-   return false;
+Player::maybeRemoveClient(const Handle& hdl) {
+   Client *cl = clients[hdl];
+   delete cl;
+
+   clients.erase(hdl);
+   return true;
 }
 
 
@@ -64,7 +57,7 @@ Inst::jsonify(std::string s1, std::string s2) {
 
 HandleResponse
 Inst::generateResponse(const Handle& hdl, Json::Value json) {
-   return HandleResponse(&hdl, stringify(json));
+   return HandleResponse(hdl, stringify(json));
 }
 
 //
@@ -100,12 +93,12 @@ Inst::broadcast_score_messages() {
    Json::Value respJson = get_score_json();
 
    for (const auto& pl : players) {
-      for (const auto& cl : pl->clients) {
-         hrl.push_back(generateResponse(*cl->hdl, respJson));
+      for (const auto& hdlClient : pl->clients) {
+         hrl.push_back(generateResponse(hdlClient.first, respJson));
       }
    }
-   for (const auto& cl : viewers) {
-      hrl.push_back(generateResponse(*cl->hdl, respJson));
+   for (const auto& hdlClient : viewers) {
+      hrl.push_back(generateResponse(hdlClient.first, respJson));
    }
 
    return hrl;
@@ -113,7 +106,7 @@ Inst::broadcast_score_messages() {
 
 HandleResponseList
 Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
-   std::cout << __PRETTY_FUNCTION__ << " hdl=" << &hdl << std::endl;
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
    HandleResponseList hrl;
    Json::Value respJson;
 
@@ -124,16 +117,16 @@ Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
       return hrl;
    }
 
-   if (handleMode[&hdl] == ModeIdle) {
+   if (handleMode[hdl] == ModeIdle) {
       // client hadn't introduced itself. Move it to viewer
-      viewers.insert(new Client(&hdl, viewer));
-      handleMode[&hdl] = ModeViewer;
+      viewers[hdl] = new Client(hdl, viewer);
+      handleMode[hdl] = ModeViewer;
 
       hrl.push_back(generateResponse(hdl, jsonify("VIEW-OKAY")));
       dump_game_state(hdl, hrl);
       return hrl;
    } else {
-      std::cerr << "client already connected and is in mode " << handleMode[&hdl] << std::endl;
+      std::cerr << "client already connected and is in mode " << handleMode[hdl] << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("VIEW-BAD", "already connected")));
       return hrl;
    }
@@ -143,7 +136,7 @@ Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
 
 HandleResponseList
 Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
-   std::cout << __PRETTY_FUNCTION__ << " hdl=" << &hdl << std::endl;
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
    HandleResponseList hrl;
    Json::Value respJson;
 
@@ -154,7 +147,7 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
       return hrl;
    }
 
-   if (handleMode[&hdl] == ModeIdle) {
+   if (handleMode[hdl] == ModeIdle) {
       // client hadn't introduced itself. Allow it to connect
 
       // Check if username matches any of the existing users. If so,
@@ -163,8 +156,8 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
          auto pl = players[i];
          if (pl->name == json[1].asString()) {
             if (pl->passwd == json[2].asString()) {
-               handleMode[&hdl] = i;
-               pl->maybeAddClient(new Client(&hdl, pl->state));
+               handleMode[hdl] = i;
+               pl->maybeAddClient(new Client(hdl, pl->state));
 
                hrl.push_back(generateResponse(hdl, jsonify("JOIN-OKAY")));
                dump_game_state(hdl, hrl);
@@ -187,9 +180,9 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
 
       // Join as a new player
       int plIdx = players.size();
-      handleMode[&hdl] = plIdx;
+      handleMode[hdl] = plIdx;
       players.push_back(new Player(json[1].asString(), json[2].asString(), wait_for_more_players));
-      players[plIdx]->maybeAddClient(new Client(&hdl, wait_for_more_players));
+      players[plIdx]->maybeAddClient(new Client(hdl, wait_for_more_players));
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-OKAY")));
 
       // announce to the world that a new player joined
@@ -205,7 +198,7 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
 
    } else {
       // already a viewer or a player
-      std::cerr << "client already connected. ignoring message as " << handleMode[&hdl] << std::endl;
+      std::cerr << "client already connected. ignoring message as " << handleMode[hdl] << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "already joined")));
    }
 
@@ -226,47 +219,45 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
 }
 
 void
-Inst::handle_appear(const Handle &hdl) {
-   std::cerr << __PRETTY_FUNCTION__ << ": " << &hdl << std::endl;
+Inst::handle_appear(const Handle& hdl) {
+   std::cerr << __PRETTY_FUNCTION__ << std::endl;
 
-   handleMode[&hdl] = ModeIdle;
+   handleMode[hdl] = ModeIdle;
    std::cout << "handleMode.size() ==" << handleMode.size() << std::endl;
 }
 
 void
-Inst::handle_disappear(const Handle &hdl) {
-   ClientMode mode = handleMode[&hdl];
-   std::cerr << __PRETTY_FUNCTION__ << ": hdl=" << &hdl << ", mode=" << mode << std::endl;
+Inst::handle_disappear(const Handle& hdl) {
+   ClientMode mode = handleMode[hdl];
+   std::cerr << __PRETTY_FUNCTION__ << ", mode=" << mode << std::endl;
 
 
    if (mode == ModeIdle) {
       // nothing more to do
    } else if (mode == ModeViewer) {
-      for (const auto& cl : viewers) {
-         if (cl->hdl == &hdl) {
-            std::cerr << "Found viewer client and deleted it" << std::endl;
-            viewers.erase(cl);
-            break;
-         }
+      auto hdlClient = viewers.find(hdl);
+      if (hdlClient != viewers.end()) {
+         std::cerr << __PRETTY_FUNCTION__ << "Found viewer client and deleted it" << std::endl;
+         delete hdlClient->second;
+         viewers.erase(hdl);
       }
    } else if (mode < (int)players.size()) {
       // client is connected as a player
       for (const auto& pl : players) {
-         pl->maybeRemoveClient(&hdl);
+         pl->maybeRemoveClient(hdl);
       }
    } else {
       assert(0 && "internal mode says player is connected");
    }
 
-   handleMode.erase(&hdl);
+   handleMode.erase(hdl);
 }
 
 HandleResponseList
 Inst::process_msg(const Handle& hdl,
                   const server::message_ptr& msg) {
    HandleResponseList hrl;
-   std::cerr << __PRETTY_FUNCTION__ << ": "
-             << (&hdl) << ", " << msg->get_payload() << std::endl;
+   std::cerr << __PRETTY_FUNCTION__  << msg->get_payload() << std::endl;
 
    Json::Value json;
    bool res;
