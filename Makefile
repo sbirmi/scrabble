@@ -1,7 +1,7 @@
 all: game-server
 
 CPPFLAGS=-Wall -I/usr/include/jsoncpp -ggdb
-LDFLAGS=-ggdb -lboost_system -lboost_thread -lpthread -ljsoncpp
+LDFLAGS=-ggdb
 
 game-server.o: game-server.cpp game-server.hpp game.hpp
 	g++ ${CPPFLAGS} -c game-server.cpp
@@ -15,10 +15,12 @@ game.o: game.cpp game.hpp
 game-server: broadcast_server.o game-server.o game.o
 	g++ \
 		${LDFLAGS} \
-		-o game-server \
-		broadcast_server.o \
-		game-server.o \
-		game.o
+		-lboost_system \
+		-lboost_thread \
+		-lpthread \
+		-ljsoncpp \
+		broadcast_server.o game-server.o game.o \
+		-o game-server
 
 
 clean:
