@@ -15,11 +15,10 @@ game.o: game.cpp game.hpp
 game-server: broadcast_server.o game-server.o game.o
 	g++ \
 		${LDFLAGS} \
-		-lboost_system \
-		-lboost_thread \
-		-lpthread \
-		-ljsoncpp \
-		broadcast_server.o game-server.o game.o \
+		broadcast_server.o \
+		game-server.o \
+		game.o \
+		-lboost_system -lboost_thread -lpthread -ljsoncpp \
 		-o game-server
 
 
