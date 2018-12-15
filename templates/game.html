@@ -75,6 +75,15 @@ body {
 
 .player {
    font: 2em "Open Sans", sans-serif;
+   padding: 4px 4px 4px 4px;
+   border-radius: 5px;
+}
+
+.playerturn {
+   font: 2em "Open Sans", sans-serif;
+   border-radius: 5px;
+   padding: 4px 4px 4px 4px;
+   background: rgba(255, 255, 255, 0.5);
 }
 
 .noselect {
@@ -95,6 +104,8 @@ body {
 // globals
 var boardcell = 65;
 var tilewidth = 63;
+
+var myName = "";
 
 var playerScoreList = [];
 
@@ -123,7 +134,10 @@ function showPlayerScore(plIdx, score) {
 
 function processScoreMessage(scoreMsg) {
    // Add to local playerScoreList
+   console.log(scoreMsg);
    var j = 0;
+   // First token is message is "SCORE" so
+   // start from 1
    for (var i=1; i<scoreMsg.length; i+=2) {
       if (playerScoreList.length <= j) {
          // Add a UI element to show score
@@ -149,6 +163,31 @@ function processScoreMessage(scoreMsg) {
          playerScoreList[j] = [ scoreMsg[i], scoreMsg[i+1] ];
       }
       j++;
+   }
+}
+
+function processRackTilesMessage(msg) {
+   var newtiles = msg[1];
+   for (var i=0; i<newtiles.length; ++i) {
+      var tile = newtiles[i];
+      setTileInRack( createTile(tile), 0 );
+   }
+}
+
+function processTurnMessage(msg) {
+   if (msg[1] == myName) {
+      // my turn
+      state = ClientState.turn;
+   } else {
+      state = ClientState.wait_turn;
+   }
+   for (var plIdx=0; plIdx<playerScoreList.length; ++plIdx) {
+      var className = "player";
+      if (playerScoreList[plIdx][0] == msg[1]) {
+         className = "playerturn";
+      }
+      var uiele = document.getElementById("playername" + plIdx);
+      uiele.className = className;
    }
 }
 
@@ -576,7 +615,7 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-var sock = new WebSocket("ws://hyp:5011/");
+var sock = new WebSocket("ws://hyp:5012/");
 sock.onopen = function (event) {
    console.log("connected to server");
    console.log(event);
@@ -592,6 +631,7 @@ sock.onmessage = function (event) {
    if (state == ClientState.start) {
       // ignore all messages
       return;
+
    } else if (state == ClientState.wait_viewer_ack) {
       // viewer mode
       if (msg[0] == "VIEW-OKAY") {
@@ -606,6 +646,7 @@ sock.onmessage = function (event) {
          // ignore all other messages
       }
       return;
+
    } else if (state == ClientState.wait_join_ack) {
       // connecting as player
       if (msg[0] == "JOIN-OKAY") {
@@ -619,7 +660,16 @@ sock.onmessage = function (event) {
          // ignore all other messages
       }
       return;
+
+   } else if (state == ClientState.wait_game_start) {
+      if (msg[0] == "RACKTILES") {
+         processRackTilesMessage(msg);
+         return;
+      }
+
    }
+
+   // Commands that work in several state
 
    if (msg[0] == "SCORE") {
       processScoreMessage(msg);
@@ -627,7 +677,11 @@ sock.onmessage = function (event) {
       for (var i=0; i<playerScoreList.length; i++) {
          showPlayerScore(i, playerScoreList[i][1]);
       }
+
+   } else if (msg[0] == "TURN") {
+      processTurnMessage(msg);
    }
+
 }
 
 
@@ -657,6 +711,7 @@ function connect_as_player() {
       alert("password missing");
       return;
    }
+   myName = name;
    sock.send(JSON.stringify( [ "JOIN", name, passwd ] ));
 
    hide_connect_panel();

@@ -17,7 +17,7 @@ CLIENT -> SERVER:
       [ "VIEW-BAD", <reason> ]
 
 SERVER -> CLIENT:
-   [ "RACKTILES", "A", "B", "C" ]
+   [ "RACKTILES", "ABC" ]
 
 SERVER -> CLIENT:
    [ "BOARDTILES", [
@@ -29,7 +29,7 @@ SERVER -> CLIENT:
    [ "SCORE", [ <playername1>, <score1> ], [ [ <playername2>, <score2> ] ] ]
 
 SERVER -> CLIENT:
-   [ "TURN", <turn-key>, <playername> ]
+   [ "TURN", <playername>, <turn-key> ]
 
    CLIENT -> SERVER:
       [ "MOVE", [

@@ -17,8 +17,6 @@
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 typedef websocketpp::connection_hdl Handle;
-
-
 typedef std::pair<const Handle&, std::string> HandleResponse;
 typedef std::vector<HandleResponse> HandleResponseList;
 
@@ -60,6 +58,9 @@ enum ClientState {
    // game started
    await_turn,
    turn,
+
+   // game completed
+   game_over,
 };
 
 class Client {
@@ -82,11 +83,13 @@ private:
    HandleClient clients;
    std::string name;
    unsigned int score = 0;
+   std::string hand;
    std::string passwd;
    // Since there maybe multiple clients,
    // we track the state of the game
    // here once a player connects
    enum ClientState state;
+   std::string turnkey;
 
 public:
    Player(std::string _name,
@@ -102,22 +105,38 @@ public:
 class Inst {
 private:
    unsigned int gid;
-   const unsigned int max_players = 2;
+   const unsigned int maxPlayers = 2;
    std::vector<Player *> players;
+   bool gameOver;
    HandleClient viewers;
    HandleMode handleMode;
 
    Json::Reader *jsonReader;
    Json::FastWriter *jsonWriter;
 
-   // Game event handling
+   unsigned int turnIndex = 0;
+   std::string tiles;
+
    Json::Value get_score_json();
+   Json::Value get_player_turn_message();
+   Json::Value get_others_turn_message();
+
+   // Game event handling
+   void start_game(HandleResponseList &hrl);
+   void next_turn();
+   std::string issue_tiles(unsigned int plIdx,
+                           HandleResponseList& hrl);
 
    // Dump game state
    void dump_game_state(const Handle& hdl, HandleResponseList &hrl);
 
    // Received message handling
-   HandleResponseList broadcast_score_messages();
+   void broadcast_json_message(HandleResponseList &hrl, const Json::Value& json);
+   void broadcast_json_message(HandleResponseList &hrl, const Json::Value& playerJson, const Json::Value& othersJson);
+
+   void broadcast_score_messages(HandleResponseList &hrl);
+   void broadcast_turn_messages(HandleResponseList &hrl);
+
    HandleResponseList process_cmd(
          const Handle&hdl,
          const Json::Value& val);
@@ -131,16 +150,15 @@ private:
    // convenience methods
    std::string stringify(const Json::Value& json);
    Json::Value jsonify(unsigned int);
-   Json::Value jsonify(std::string);
-   Json::Value jsonify(std::string, std::string);
+   Json::Value jsonify(const std::string&);
+   Json::Value jsonify(const std::string&, const std::string&);
+   Json::Value jsonify(const std::string&, const std::string&,
+                       const std::string&);
    HandleResponse generateResponse(
          const Handle& hdl, Json::Value json);
 
 public:
-   Inst(unsigned int _gid) :
-      gid(_gid),
-      jsonReader(new Json::Reader()),
-      jsonWriter(new Json::FastWriter()) {};
+   Inst(unsigned int _gid);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);

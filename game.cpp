@@ -1,6 +1,21 @@
+#include <algorithm>
+#include <random>
+
 #include "game.hpp"
 
 using namespace Game;
+
+#define  MAX_RAND_STRING      (8)
+
+std::string
+randomString() {
+   std::string resp;
+   static const char alphanum[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+   for (unsigned int i=0; i<MAX_RAND_STRING; ++i) {
+      resp.push_back(alphanum[rand() % (sizeof(alphanum) - 1)]);
+   }
+   return resp;
+}
 
 
 //
@@ -41,17 +56,27 @@ Inst::jsonify(unsigned int i) {
 }
 
 Json::Value
-Inst::jsonify(std::string s1) {
+Inst::jsonify(const std::string& s1) {
    Json::Value json;
    json.append(Json::Value(s1));
    return json;
 }
 
 Json::Value
-Inst::jsonify(std::string s1, std::string s2) {
+Inst::jsonify(const std::string& s1, const std::string& s2) {
    Json::Value json;
    json.append(Json::Value(s1));
    json.append(Json::Value(s2));
+   return json;
+}
+
+Json::Value
+Inst::jsonify(const std::string& s1, const std::string& s2,
+              const std::string& s3) {
+   Json::Value json;
+   json.append(Json::Value(s1));
+   json.append(Json::Value(s2));
+   json.append(Json::Value(s3));
    return json;
 }
 
@@ -61,7 +86,7 @@ Inst::generateResponse(const Handle& hdl, Json::Value json) {
 }
 
 //
-// Game event handling
+//
 //
 Json::Value
 Inst::get_score_json() {
@@ -75,10 +100,90 @@ Inst::get_score_json() {
    return respJson;
 }
 
+Json::Value
+Inst::get_player_turn_message() {
+   return jsonify("TURN", players[turnIndex]->name,
+                  players[turnIndex]->turnkey);
+}
+
+Json::Value
+Inst::get_others_turn_message() {
+   return jsonify("TURN", players[turnIndex]->name);
+}
+
+//
+// Game event handling
+//
+void
+Inst::next_turn() {
+   turnIndex = (turnIndex + 1) % maxPlayers;
+   for (auto const& pl : players) {
+      pl->state = await_turn;
+   }
+   players[turnIndex]->turnkey = randomString();
+   players[turnIndex]->state = turn;
+}
+
+void
+Inst::start_game(HandleResponseList &hrl) {
+   // pick who will start the game
+   std::cout << __PRETTY_FUNCTION__ << " first turn=" << turnIndex << std::endl;
+
+   std::cout << tiles.size() << std::endl;
+
+   // issue tiles
+   for (unsigned int plIdx=0; plIdx < maxPlayers; ++plIdx) {
+      issue_tiles(plIdx, hrl);
+   }
+
+   next_turn();
+   broadcast_turn_messages(hrl);
+}
+
+std::string
+Inst::issue_tiles(unsigned int plIdx, HandleResponseList& hrl) {
+   std::string racktiles = "";
+   unsigned int tilesNeeded = 7 - players[plIdx]->hand.size();
+
+   for (unsigned int i=0; i<tilesNeeded && tiles.size(); ++i) {
+      racktiles.push_back(tiles.back());
+      players[plIdx]->hand.push_back(tiles.back());
+      tiles.pop_back();
+   }
+
+   for (auto const& hdlClient : players[plIdx]->clients) {
+      hrl.push_back(
+         generateResponse(hdlClient.first,
+                          jsonify("RACKTILES", racktiles)));
+   }
+
+   return racktiles;
+}
+
 void
 Inst::dump_game_state(const Handle& hdl, HandleResponseList &hrl) {
+   // Show connected players + score (game may not
+   // have started)
    if (players.size() > 0) {
       hrl.push_back(generateResponse(hdl, get_score_json()));
+   }
+
+   if (gameOver) {
+      return;
+   }
+
+   // If we have enough players, game has started
+   if (players.size() == maxPlayers) {
+      ClientMode cm = handleMode[hdl];
+      // If connected as a player, share tiles
+      if (cm >= 0) {
+         hrl.push_back(generateResponse(hdl,
+                  jsonify("RACKTILES", players[cm]->hand)));
+      }
+
+      // Send whose turn it is
+      Json::Value msg = (cm == (int)turnIndex) ? get_player_turn_message() : get_others_turn_message();
+      hrl.push_back(generateResponse(hdl, msg));
    }
 }
 
@@ -87,21 +192,42 @@ Inst::dump_game_state(const Handle& hdl, HandleResponseList &hrl) {
 //
 // Message processing
 //
-HandleResponseList
-Inst::broadcast_score_messages() {
-   HandleResponseList hrl;
-   Json::Value respJson = get_score_json();
-
+void
+Inst::broadcast_json_message(HandleResponseList &hrl, const Json::Value& json) {
    for (const auto& pl : players) {
       for (const auto& hdlClient : pl->clients) {
-         hrl.push_back(generateResponse(hdlClient.first, respJson));
+         hrl.push_back(generateResponse(hdlClient.first, json));
       }
    }
    for (const auto& hdlClient : viewers) {
-      hrl.push_back(generateResponse(hdlClient.first, respJson));
+      hrl.push_back(generateResponse(hdlClient.first, json));
    }
+}
 
-   return hrl;
+void
+Inst::broadcast_json_message(HandleResponseList &hrl, const Json::Value& playerJson, const Json::Value& othersJson) {
+   unsigned int plIdx = 0;
+   for (const auto& pl : players) {
+      for (const auto& hdlClient : pl->clients) {
+         hrl.push_back(generateResponse(
+               hdlClient.first,
+               (plIdx==turnIndex)?playerJson:othersJson));
+      }
+      ++plIdx;
+   }
+   for (const auto& hdlClient : viewers) {
+      hrl.push_back(generateResponse(hdlClient.first, othersJson));
+   }
+}
+
+void
+Inst::broadcast_score_messages(HandleResponseList &hrl) {
+   broadcast_json_message(hrl, get_score_json());
+}
+
+void
+Inst::broadcast_turn_messages(HandleResponseList &hrl) {
+   broadcast_json_message(hrl, get_player_turn_message(), get_others_turn_message());
 }
 
 HandleResponseList
@@ -170,10 +296,9 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
          }
       }
 
-
       // Looks like we didn't match any existing player. If we
       // hit max players, stop here
-      if (players.size() == max_players) {
+      if (players.size() == maxPlayers) {
          hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "max players reached")));
          return hrl;
       }
@@ -186,12 +311,12 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-OKAY")));
 
       // announce to the world that a new player joined
-      for ( const auto& hr : broadcast_score_messages() ) {
-         hrl.push_back(hr);
-      }
+      broadcast_score_messages(hrl);
 
-      if (players.size() == max_players) {
+      std::cout << "here" << std::endl;
+      if (players.size() == maxPlayers) {
          // start the game
+         start_game(hrl);
       }
 
       return hrl;
@@ -216,6 +341,24 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
    }
 
    return HandleResponseList();
+}
+
+Inst::Inst(unsigned int _gid) :
+      gid(_gid),
+      jsonReader(new Json::Reader()),
+      jsonWriter(new Json::FastWriter()) {
+   std::mt19937 rng;
+   rng.seed(std::random_device()());
+
+   tiles = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ  ";
+   assert(tiles.length() == 100);
+
+   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
+   turnIndex = dist6(rng);
+   srand(time(NULL));
+   random_shuffle(tiles.begin(), tiles.end());
+
+   gameOver = false;
 }
 
 void
