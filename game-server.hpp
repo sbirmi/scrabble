@@ -8,6 +8,7 @@
 #include <websocketpp/common/thread.hpp>
 
 #include "game.hpp"
+#include "word_list.hpp"
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 
@@ -44,13 +45,14 @@ struct action {
 
 class broadcast_server {
    public:
-      broadcast_server();
+      broadcast_server(const WordList *);
       void run(uint16_t port);
       void on_open(connection_hdl hdl);
       void on_close(connection_hdl hdl);
       void on_message(connection_hdl hdl, server::message_ptr msg);
       void process_messages();
    private:
+      const WordList *wl;
       Game::Inst *gi;
 
       typedef std::set<connection_hdl,std::owner_less<connection_hdl> > con_list;

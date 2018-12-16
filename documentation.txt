@@ -39,15 +39,15 @@ SERVER -> CLIENT:
          [ "PASS-BAD", <reason> ]
 
    CLIENT -> SERVER:
-      [ "MOVE", [
-            [ "A", x, y ],
-            [ " ", x, y ],
-        ] ]
+      [ "PLAY", <turn-key>, [ "A", r, c ], [ "b", r, c ], ]
 
       SERVER -> CLIENT:
-         [ "MOVE-OKAY", <turn-key> ]
-         [ "MOVE-BAD", <turn-key>, <reason> ]
-            - such as out of turn
+         [ "PLAY-OKAY", ]
+         [ "PLAY-BAD", <reason> ]
+            - out of turn
+            - bad turnkey
+            - bad word(s)
+            - bad move
 
    CLIENT -> SERVER:
       [ "EXCH", <turn-key>, "A", "B" ]

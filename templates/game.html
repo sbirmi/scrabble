@@ -145,7 +145,6 @@ function processScoreMessage(scoreMsg) {
       if (playerScoreList.length <= j) {
          // Add a UI element to show score
          // for the newly discovered player
-         console.log("adding items");
          var bottompanel = document.getElementById("bottompanel");
          var cell = bottompanel.insertCell(-1);
          cell.style.width = "30px";
@@ -268,6 +267,15 @@ function createTile(letter) {
    return tile;
 }
 
+function tileText(ele) {
+   for (var i=0; i<ele.children.length; ++i) {
+      var tile = ele.children[i];
+      if (tile.className.includes("tiletext")) {
+         return tile.innerHTML;
+      }
+   }
+   return "";
+}
 
 function rackposName(idx) {
    return "rackpos" + idx.toString();
@@ -288,6 +296,11 @@ function dropOn(ele, x, y) {
          if (coordsInRect(x, y,rackspotEles[i].getBoundingClientRect())) {
             console.log("Dropping tile at rack spot " + i);
             setTileInRack(dragObj, i);
+            var prevR, prevC;
+            [prevR, prevC] = findTileOnBoard(dragObj);
+            if (prevR > -1 && prevC > -1) {
+               boardtiles[prevR][prevC] = null;
+            }
             return true;
          }
       }
@@ -335,7 +348,6 @@ function setTileOnBoard(ele, c, r) {
    // find old position of the tile on the board and remove from there
 
    [prevR, prevC] = findTileOnBoard(ele);
-   console.log( prevR + " " + prevC ); 
    if (prevR > -1) {
       boardtiles[prevR][prevC] = null;
    }
@@ -518,11 +530,35 @@ function click_shuf_tiles() {
 }
 
 function click_pass_button() {
-   if (state == ClientState.turn) {
-      sock.send(JSON.stringify(["PASS", turnKey]));
-      state = ClientState.wait_turn_ack;
+   if (state != ClientState.turn) {
+      return;
+   }
+   sock.send(JSON.stringify(["PASS", turnKey]));
+   state = ClientState.wait_turn_ack;
+}
+
+function click_play_button() {
+   if (state != ClientState.turn) {
+      return;
    }
 
+   var play = [ "PLAY", turnKey ];
+   for (var i=0; i<handTilesUi.length; ++i) {
+      var tileUi = handTilesUi[i];
+      var br, bc;
+      [br, bc] = findTileOnBoard(tileUi);
+      if (br > -1 && bc > -1) {
+         var letter = tileText(tileUi);
+         play.push([letter, br, bc]);
+      }
+   }
+
+   if (play.length == 2) {
+      return;
+   }
+
+   sock.send(JSON.stringify(play));
+   state = ClientState.wait_turn_ack;
 }
 
 -->
@@ -554,7 +590,7 @@ function click_pass_button() {
                <input type=button id="passbutton" class="button" value="PASS" disabled=True onclick="click_pass_button();">
             </td>
             <td>
-               <input type=button id="playbutton" class="button" value="PLAY" disabled=True>
+               <input type=button id="playbutton" class="button" value="PLAY" disabled=True onclick="click_play_button();">
             </td>
          </tr>
          </table>
@@ -690,7 +726,7 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-var sock = new WebSocket("ws://hyp:5012/");
+var sock = new WebSocket("ws://hyp:5011/");
 sock.onopen = function (event) {
    console.log("connected to server");
    console.log(event);
@@ -742,13 +778,17 @@ sock.onmessage = function (event) {
          return;
       }
 
-   } else if (state == ClientState.turn) {
-      // in turn mode. response to move made
-      if (msg[0] == "PASS-OKAY") {
-         state = ClientState.wait_game_start;
-         return;
-      } else if (msg[0] == "PASS-BAD") {
+   } else if (state == ClientState.wait_turn_ack) {
+      // just made a move and waitnig for confirmation
+
+      if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD") {
          state = ClientState.turn;
+         return;
+      } else if (msg[0] == "PLAY-OKAY") {
+         state = ClientState.wait_turn;
+         return;
+      } else if (msg[0] == "PASS-OKAY") {
+         state = ClientState.wait_turn;
          return;
       }
 

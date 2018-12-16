@@ -2,6 +2,7 @@
 #include <set>
 
 #include "game-server.hpp"
+#include "word_list.hpp"
 
 /*#include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
@@ -15,8 +16,10 @@ int main(int argc, char *argv[]) {
       return -1;
    }
 
+   WordList *wl = new WordList("wordlist.txt");
+
    try {
-      broadcast_server server_instance;
+      broadcast_server server_instance(wl);
 
       // Start a thread to run the processing loop
       thread t(bind(&broadcast_server::process_messages,&server_instance));

@@ -15,6 +15,8 @@
 #include <utility>
 #include <vector>
 
+#include "word_list.hpp"
+
 typedef websocketpp::server<websocketpp::config::asio> server;
 typedef websocketpp::connection_hdl Handle;
 typedef std::pair<const Handle&, std::string> HandleResponse;
@@ -29,6 +31,12 @@ typedef std::map<const Handle, ClientMode, std::owner_less<Handle>> HandleMode;
 namespace Game {
 
 class Inst;
+
+struct PlayMove {
+   char letter;
+   unsigned int row;
+   unsigned int col;
+};
 
 enum ClientState {
    // wait_for_handshake
@@ -105,11 +113,17 @@ public:
 class Inst {
 private:
    unsigned int gid;
+   const WordList *wl;
    const unsigned int maxPlayers = 2;
    std::vector<Player *> players;
    bool gameOver;
    HandleClient viewers;
    HandleMode handleMode;
+   unsigned int boardscoreRC[15][15] = {0};
+   unsigned int tempBoardScoreRC[15][15] = {0};
+   char boardRC[15][15];
+   char tempBoardRC[15][15];
+   unsigned int movesMade;
 
    Json::Reader *jsonReader;
    Json::FastWriter *jsonWriter;
@@ -124,6 +138,8 @@ private:
    // Game event handling
    void start_game(HandleResponseList &hrl);
    void next_turn();
+   // returns negative value if score is 0
+   int play_score(const std::vector<PlayMove>&);
    std::string issue_tiles(unsigned int plIdx,
                            HandleResponseList& hrl);
 
@@ -149,6 +165,9 @@ private:
    HandleResponseList process_cmd_pass(
          const Handle& hdl,
          const Json::Value &cmdJson);
+   HandleResponseList process_cmd_play(
+         const Handle& hdl,
+         const Json::Value &cmdJson);
 
    // convenience methods
    std::string stringify(const Json::Value& json);
@@ -161,7 +180,7 @@ private:
          const Handle& hdl, Json::Value json);
 
 public:
-   Inst(unsigned int _gid);
+   Inst(unsigned int _gid, const WordList *);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);

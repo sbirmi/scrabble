@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <map>
 #include <random>
 
 #include "game.hpp"
@@ -6,6 +7,17 @@
 using namespace Game;
 
 #define  MAX_RAND_STRING      (8)
+
+std::map<char, unsigned int> letterScore = {
+   {'A', 1}, {'B', 3}, {'C', 3}, {'D', 2}, {'E', 1}, {'F', 4}, {'G', 2},
+   {'H', 4}, {'I', 1}, {'J', 8}, {'K', 5}, {'L', 1}, {'M', 3}, {'N', 1},
+   {'O', 1}, {'P', 3}, {'Q', 10}, {'R', 1}, {'S', 1}, {'T', 1}, {'U', 1},
+   {'V', 4}, {'W', 4}, {'X', 8}, {'Y', 4}, {'Z', 10},
+   {'a', 0}, {'b', 0}, {'c', 0}, {'d', 0}, {'e', 0}, {'f', 0}, {'g', 0},
+   {'h', 0}, {'i', 0}, {'j', 0}, {'k', 0}, {'l', 0}, {'m', 0}, {'n', 0},
+   {'o', 0}, {'p', 0}, {'q', 0}, {'r', 0}, {'s', 0}, {'t', 0}, {'u', 0},
+   {'v', 0}, {'w', 0}, {'x', 0}, {'y', 0}, {'z', 0},
+};
 
 std::string
 randomString() {
@@ -22,7 +34,6 @@ randomString() {
    lastRandomString = resp;
    return resp;
 }
-
 
 //
 // Player methods
@@ -128,6 +139,142 @@ Inst::next_turn() {
    }
    players[turnIndex]->turnkey = randomString();
    players[turnIndex]->state = turn;
+}
+
+int
+Inst::play_score(const std::vector<PlayMove>& play) {
+   // Verify each character played in the move were in the hand
+   std::string tilesplayed;
+   for (const auto& pm : play) {
+      if (pm.letter == ' ') {
+         return -1;
+      }
+      tilesplayed.push_back(pm.letter);
+   }
+
+   std::string handtiles = players[turnIndex]->hand;
+   for (auto const& letter : tilesplayed) {
+      size_t idx = std::string::npos;
+      if (isupper(letter)) {
+         idx = handtiles.find(letter);
+      } else if (islower(letter)) {
+         // lower letter => blank
+         idx = handtiles.find(' ');
+      } else {
+         // illegal character
+         return -1;
+      }
+
+      if (idx == std::string::npos) {
+         // playing a character that's not in the hand
+         return -1;
+      }
+
+      handtiles[idx] = '*';
+   }
+
+   // create a temp board from the actual board and
+   // add tiles
+   for (unsigned int r=0; r<15; ++r) {
+      for (unsigned int c=0; c<15; ++c) {
+         tempBoardRC[r][c] = boardRC[r][c];
+         tempBoardScoreRC[r][c] = boardscoreRC[r][c];
+      }
+   }
+
+   for (const auto& pm : play) {
+      if (tempBoardRC[pm.row][pm.col] != ' ') {
+         // can't place a tile on top of an existing tiles
+         return -1;
+      }
+
+      tempBoardRC[pm.row][pm.col] = toupper(pm.letter);
+      tempBoardScoreRC[pm.row][pm.col] = letterScore[pm.letter];
+   }
+
+   // check two tiles are not placed on the same place
+   for (unsigned int i=0; i<play.size() - 1; ++i) {
+      for (unsigned int j=1; j<play.size(); ++j) {
+         if (play[i].row == play[j].row &&
+             play[i].col == play[j].col) {
+            // placing more than 1 tile on the same spot
+            return -1;
+         }
+      }
+   }
+
+   // check if tiles are in the same row or in the same column
+   bool samerow = true;
+   bool samecol = true;
+
+   unsigned int minRow = play[0].row, maxRow = play[0].row;
+   unsigned int minCol = play[0].col, maxCol = play[0].col;
+   if (play.size() > 1) {
+      unsigned firstrow = play[0].row;
+      unsigned firstcol = play[0].col;
+
+      for (unsigned int i=1; i<play.size(); ++i) {
+         samerow &= (firstrow == play[i].row);
+         samecol &= (firstcol == play[i].col);
+
+         minRow = std::min(minRow, play[i].row);
+         maxRow = std::max(maxRow, play[i].row);
+
+         minCol = std::min(minCol, play[i].col);
+         maxCol = std::max(maxCol, play[i].col);
+      }
+
+      if (!samerow && !samecol) {
+         // played tiles are not in one row
+         return -1;
+      }
+   }
+
+   // if this is the first move, one of the tiles must
+   // be at the center of the board
+   if (movesMade == 0) {
+      bool boardCenterOccupied = false;
+      for (const auto& pm : play) {
+         if (pm.row == 7 && pm.col == 7) {
+            boardCenterOccupied = true;
+            break;
+         }
+      }
+
+      if (!boardCenterOccupied) {
+         // first move is off-center
+         return -1;
+      }
+   }
+
+   if (play.size() == 1) {
+      samecol = false;
+   }
+
+   // check that there are no gaps based on whether
+   // it's the same row or same column
+   if (play.size() > 1) {
+      if (samerow) {
+         for (unsigned int col = minCol; col<=maxCol; ++col) {
+            if (tempBoardRC[minRow][col] == ' ') {
+               return -1;
+            }
+         }
+      }
+
+      if (samecol) {
+         for (unsigned int row = minRow; row<=maxRow; ++row) {
+            if (tempBoardRC[row][minCol] == ' ') {
+               return -1;
+            }
+         }
+      }
+   }
+
+   // TODO calculate score while checking the words are valid
+
+   ++movesMade;
+   return 0;
 }
 
 void
@@ -241,7 +388,6 @@ HandleResponseList
 Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
    HandleResponseList hrl;
-   Json::Value respJson;
 
    // parse message size etc
    if (json.size() != 1) {
@@ -370,6 +516,61 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value &json) {
 }
 
 HandleResponseList
+Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+   HandleResponseList hrl;
+
+   // parse message size etc
+   if (cmdJson.size() < 2 || cmdJson.size() > 9) {
+      std::cerr << "message error: incorrect number of tiles played" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "incorrect number of tiles played")));
+      return hrl;
+   }
+
+   for (unsigned int i=2; i<cmdJson.size(); ++i) {
+      if (!cmdJson[i].isArray() || cmdJson[i].size()!=3 ||
+          !cmdJson[i][0].isString() || !cmdJson[i][1].isUInt() || !cmdJson[i][2].isUInt()) {
+         std::cerr << "message error: incorrect message format" << std::endl;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "message format")));
+         return hrl;
+      }
+   }
+
+   if (handleMode[hdl] != (int)turnIndex) {
+      std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "out of turn")));
+      return hrl;
+   }
+
+   if (cmdJson[1].asString() != players[turnIndex]->turnkey) {
+      std::cerr << "out of turn: turnkey mismatch" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad turnkey")));
+      return hrl;
+   }
+
+   std::vector<PlayMove> play;
+   for (unsigned int i=2; i<cmdJson.size(); ++i) {
+      PlayMove pm = { cmdJson[i][0].asString()[0],
+                      cmdJson[i][1].asUInt(),
+                      cmdJson[i][2].asUInt() };
+      play.push_back(pm);
+   }
+
+   int score = play_score(play);
+   if (score <0) {
+      std::cerr << "out of turn: bad move" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad move")));
+      return hrl;
+   }
+
+   // Player turnIndex wants to pass
+   hrl.push_back(generateResponse(hdl, jsonify("PLAY-OKAY")));
+   next_turn(); 
+   broadcast_turn_messages(hrl);
+   return hrl;
+}
+
+HandleResponseList
 Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
    auto cmd = json[0].asString();
 
@@ -379,13 +580,17 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
       return process_cmd_join(hdl, json);
    } else if (cmd == "PASS") {
       return process_cmd_pass(hdl, json);
+   } else if (cmd == "PLAY") {
+      return process_cmd_play(hdl, json);
    }
 
    return HandleResponseList();
 }
 
-Inst::Inst(unsigned int _gid) :
+Inst::Inst(unsigned int _gid, const WordList *_wl) :
       gid(_gid),
+      wl(_wl),
+      movesMade(0),
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
    std::mt19937 rng;
@@ -399,6 +604,12 @@ Inst::Inst(unsigned int _gid) :
    std::cout << "turnIndex = " << turnIndex << std::endl;
    srand(time(NULL));
    random_shuffle(tiles.begin(), tiles.end());
+
+   for (unsigned int r=0; r<15; ++r) {
+      for (unsigned int c=0; c<15; ++c) {
+         boardRC[r][c] = ' ';
+      }
+   }
 
    gameOver = false;
 }

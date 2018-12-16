@@ -1,8 +1,8 @@
 #include "game-server.hpp"
 
 
-broadcast_server::broadcast_server() {
-   gi = new Game::Inst(0);
+broadcast_server::broadcast_server(const WordList *_wl) : wl(_wl) {
+   gi = new Game::Inst(0, wl);
    // Initialize Asio Transport
    m_server.init_asio();
 
