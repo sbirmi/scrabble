@@ -106,6 +106,7 @@ var boardcell = 65;
 var tilewidth = 63;
 
 var myName = "";
+var turnKey = "";
 
 var playerScoreList = [];
 
@@ -116,7 +117,9 @@ var rackspotEles = [];
 
 var dragObj = null;
 
-var turntiles = [];
+// Tiles in hand. They maybe on the rack
+// or on the board
+var handTilesUi = [];
 
 var letterscore = {
    "A": 1, "B": 3, "C": 3, "D": 2, "E": 1,
@@ -170,17 +173,30 @@ function processRackTilesMessage(msg) {
    var newtiles = msg[1];
    for (var i=0; i<newtiles.length; ++i) {
       var tile = newtiles[i];
-      setTileInRack( createTile(tile), 0 );
+      var tileUi = createTile(tile);
+      handTilesUi.push(tileUi);
+      setTileInRack(tileUi, 0);
    }
+   document.getElementById("shufbutton").disabled = false;
 }
 
 function processTurnMessage(msg) {
+   var buttons_disabled = true;
    if (msg[1] == myName) {
       // my turn
       state = ClientState.turn;
+      buttons_disabled = false;
+      turnKey = msg[2];
    } else {
       state = ClientState.wait_turn;
+      turnKey = "";
    }
+
+   // Enabled/disable move buttons
+   document.getElementById("exchbutton").disabled = buttons_disabled;
+   document.getElementById("passbutton").disabled = buttons_disabled;
+   document.getElementById("playbutton").disabled = buttons_disabled;
+
    for (var plIdx=0; plIdx<playerScoreList.length; ++plIdx) {
       var className = "player";
       if (playerScoreList[plIdx][0] == msg[1]) {
@@ -209,7 +225,6 @@ function findTileOnBoard(ele) {
    return [ -1, -1 ];
 }
 
-
 function createTile(letter) {
    var score = letterscore[letter];
 	var tile = document.createElement("div");
@@ -229,6 +244,25 @@ function createTile(letter) {
    tile.appendChild(tilescore);
 	tilescore.setAttribute("class", "tilescore noselect");
    tilescore.innerHTML = score.toString();
+
+   if (letter == " ") {
+      tile.style.color = "#0000ff";
+      tile.onclick = function(ev) {
+         var blankTileLetters = " abcdefghijklmnopqrstuvwxyz";
+         var idx = blankTileLetters.indexOf(tiletext.innerHTML);
+         if (ev.layerX > tilewidth/2) {
+            idx += 1;
+         } else {
+            idx -= 1;
+         }
+         if (idx == -1) {
+            idx += blankTileLetters.length;
+         } else {
+            idx = idx % blankTileLetters.length;
+         }
+         tiletext.innerHTML = blankTileLetters[idx];
+      }
+   }
 
    dragElement(tile);
    return tile;
@@ -455,6 +489,42 @@ function dragElement(ele) {
    }
 }
 
+function click_shuf_tiles() {
+   // 1. Remove the tile from the board and rack
+   for (var i=0; i<handTilesUi.length; ++i) {
+      var tileUi = handTilesUi[i];
+
+      // tileUi on the racktiles
+      var rackIdx = racktiles.indexOf(tileUi);
+      if (rackIdx > -1) {
+         // remove from there
+         racktiles[rackIdx] = null;
+      } else {
+         // remove it from the board
+         var boardR, boardC;
+         [boardR, boardC] = findTileOnBoard(tileUi)
+         if (boardR > -1 && boardC > -1) {
+            boardtiles[boardR][boardC] = null;
+         }
+      }
+   }
+
+   // 2. place the tiles again on the rack
+   for (var i=0; i<handTilesUi.length; ++i) {
+      var tileUi = handTilesUi[i];
+      var randomPos = Math.floor(Math.random() * 7);
+      setTileInRack(tileUi, randomPos);
+   }
+}
+
+function click_pass_button() {
+   if (state == ClientState.turn) {
+      sock.send(JSON.stringify(["PASS", turnKey]));
+      state = ClientState.wait_turn_ack;
+   }
+
+}
+
 -->
 </script>
 
@@ -475,13 +545,13 @@ function dragElement(ele) {
          <table align=center>
          <tr>
             <td>
-               <input type=button id="passbutton" class="button" value="EXCH" disabled=True>
+               <input type=button id="shufbutton" class="button" value="SHUF" disabled=True onclick="click_shuf_tiles();">
             </td>
             <td>
-               <input type=button id="passbutton" class="button" value="SHUF" disabled=True>
+               <input type=button id="exchbutton" class="button" value="EXCH" disabled=True>
             </td>
             <td>
-               <input type=button id="passbutton" class="button" value="PASS" disabled=True>
+               <input type=button id="passbutton" class="button" value="PASS" disabled=True onclick="click_pass_button();">
             </td>
             <td>
                <input type=button id="playbutton" class="button" value="PLAY" disabled=True>
@@ -575,6 +645,10 @@ for (var r=0; r<15; r++) {
    boardcells.push(rowcells);
 }
 
+document.getElementById("shufbutton").disabled = true;
+document.getElementById("exchbutton").disabled = true;
+document.getElementById("passbutton").disabled = true;
+document.getElementById("playbutton").disabled = true;
 
 var tilerackEle = document.getElementById("tilerack");
 var tilerackrowEle = tilerackEle.insertRow(0);
@@ -610,8 +684,9 @@ var ClientState = Object.freeze({
    "wait_join_ack": 3,
    "wait_game_start": 4,
    "turn": 5,
-   "wait_turn": 6,
-   "game_over": 7});
+   "wait_turn_ack":6,
+   "wait_turn": 7,
+   "game_over": 8});
    
 var state = ClientState.start;
 
@@ -664,6 +739,16 @@ sock.onmessage = function (event) {
    } else if (state == ClientState.wait_game_start) {
       if (msg[0] == "RACKTILES") {
          processRackTilesMessage(msg);
+         return;
+      }
+
+   } else if (state == ClientState.turn) {
+      // in turn mode. response to move made
+      if (msg[0] == "PASS-OKAY") {
+         state = ClientState.wait_game_start;
+         return;
+      } else if (msg[0] == "PASS-BAD") {
+         state = ClientState.turn;
          return;
       }
 

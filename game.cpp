@@ -9,11 +9,17 @@ using namespace Game;
 
 std::string
 randomString() {
-   std::string resp;
+   static std::string lastRandomString = "";
+   std::string resp = lastRandomString;
    static const char alphanum[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-   for (unsigned int i=0; i<MAX_RAND_STRING; ++i) {
-      resp.push_back(alphanum[rand() % (sizeof(alphanum) - 1)]);
+
+   while (resp == lastRandomString) {
+      resp = "";
+      for (unsigned int i=0; i<MAX_RAND_STRING; ++i) {
+         resp.push_back(alphanum[rand() % (sizeof(alphanum) - 1)]);
+      }
    }
+   lastRandomString = resp;
    return resp;
 }
 
@@ -146,8 +152,9 @@ Inst::issue_tiles(unsigned int plIdx, HandleResponseList& hrl) {
    unsigned int tilesNeeded = 7 - players[plIdx]->hand.size();
 
    for (unsigned int i=0; i<tilesNeeded && tiles.size(); ++i) {
-      racktiles.push_back(tiles.back());
-      players[plIdx]->hand.push_back(tiles.back());
+      char letter = tiles.back();
+      racktiles.push_back(letter);
+      players[plIdx]->hand.push_back(letter);
       tiles.pop_back();
    }
 
@@ -331,6 +338,38 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
 }
 
 HandleResponseList
+Inst::process_cmd_pass(const Handle& hdl, const Json::Value &json) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+   HandleResponseList hrl;
+   Json::Value respJson;
+
+   // parse message size etc
+   if (json.size() != 2 || !json[1].isString()) {
+      std::cerr << "message error: not 2 tokens or input doesn't have strings" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "message format")));
+      return hrl;
+   }
+
+   if (handleMode[hdl] != (int)turnIndex) {
+      std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "out of turn")));
+      return hrl;
+   }
+
+   if (json[1].asString() != players[turnIndex]->turnkey) {
+      std::cerr << "out of turn: turnkey mismatch" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "bad turnkey")));
+      return hrl;
+   }
+
+   // Player turnIndex wants to pass
+   hrl.push_back(generateResponse(hdl, jsonify("PASS-OKAY")));
+   next_turn(); 
+   broadcast_turn_messages(hrl);
+   return hrl;
+}
+
+HandleResponseList
 Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
    auto cmd = json[0].asString();
 
@@ -338,6 +377,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
       return process_cmd_view(hdl, json);
    } else if (cmd == "JOIN") {
       return process_cmd_join(hdl, json);
+   } else if (cmd == "PASS") {
+      return process_cmd_pass(hdl, json);
    }
 
    return HandleResponseList();
@@ -355,6 +396,7 @@ Inst::Inst(unsigned int _gid) :
 
    std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
    turnIndex = dist6(rng);
+   std::cout << "turnIndex = " << turnIndex << std::endl;
    srand(time(NULL));
    random_shuffle(tiles.begin(), tiles.end());
 

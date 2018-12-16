@@ -146,6 +146,9 @@ private:
    HandleResponseList process_cmd_join(
          const Handle& hdl,
          const Json::Value &cmdJson);
+   HandleResponseList process_cmd_pass(
+         const Handle& hdl,
+         const Json::Value &cmdJson);
 
    // convenience methods
    std::string stringify(const Json::Value& json);

@@ -32,6 +32,13 @@ SERVER -> CLIENT:
    [ "TURN", <playername>, <turn-key> ]
 
    CLIENT -> SERVER:
+      [ "PASS", <turn-key> ]
+
+      SERVER -> CLIENT:
+         [ "PASS-OKAY" ]
+         [ "PASS-BAD", <reason> ]
+
+   CLIENT -> SERVER:
       [ "MOVE", [
             [ "A", x, y ],
             [ " ", x, y ],
@@ -49,13 +56,6 @@ SERVER -> CLIENT:
          [ "EXCH-OKAY", <turn-key> ]
          [ "EXCH-BAD", <turn-key>, <reason> ]
             - such as out of turn
-
-   CLIENT -> SERVER:
-      [ "PASS", <turn-key> ]
-
-      SERVER -> CLIENT:
-         [ "PASS-OKAY", <turn-key> ]
-         [ "PASS-BAD", <turn-key>, <reason> ]
 
 
 
