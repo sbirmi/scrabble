@@ -107,12 +107,13 @@ var tilewidth = 63;
 
 var myName = "";
 var turnKey = "";
+var turnPlayedTiles = [];
 
 var playerScoreList = [];
 
 var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
 var racktiles = [ null, null, null, null, null, null, null ];
-var frozentiles = [];
+//var frozentiles = [];
 var rackspotEles = [];
 
 var dragObj = null;
@@ -127,7 +128,13 @@ var letterscore = {
    "K": 5, "L": 1, "M": 3, "N": 1, "O": 1,
    "P": 3, "Q":10, "R": 1, "S": 1, "T": 1,
    "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4,
-   "Z":10, " ": 0
+   "Z":10, " ": 0,
+   "a": 0, "b": 0, "c": 0, "d": 0, "e": 0,
+   "f": 0, "g": 0, "h": 0, "i": 0, "j": 0,
+   "k": 0, "l": 0, "m": 0, "n": 0, "o": 0,
+   "p": 0, "q": 0, "r": 0, "s": 0, "t": 0,
+   "u": 0, "v": 0, "w": 0, "x": 0, "y": 0,
+   "z": 0,
 }
 
 function showPlayerScore(plIdx, score) {
@@ -161,9 +168,9 @@ function processScoreMessage(scoreMsg) {
 
          cell.appendChild(playername);
          cell.appendChild(playerscore);
-
-         playerScoreList[j] = [ scoreMsg[i], scoreMsg[i+1] ];
       }
+      playerScoreList[j] = [ scoreMsg[i], scoreMsg[i+1] ];
+      document.getElementById("playerscore" + j).innerHTML = scoreMsg[i+1];
       j++;
    }
 }
@@ -172,7 +179,7 @@ function processRackTilesMessage(msg) {
    var newtiles = msg[1];
    for (var i=0; i<newtiles.length; ++i) {
       var tile = newtiles[i];
-      var tileUi = createTile(tile);
+      var tileUi = createRackTile(tile);
       handTilesUi.push(tileUi);
       setTileInRack(tileUi, 0);
    }
@@ -206,6 +213,22 @@ function processTurnMessage(msg) {
    }
 }
 
+function processBoardTilesMessage(msg) {
+   for (var i=1; i<msg.length; ++i) {
+      var letter = msg[i][0];
+      var row = msg[i][1];
+      var col = msg[i][2];
+      var tileUi = createBoardTile(letter);
+
+      if (boardtiles[row][col]) {
+         var oldTile = boardtiles[row][col];
+         setTileInRack(oldTile, 0);
+         boardtiles[row][col] = null;
+      }
+      setTileOnBoard(tileUi, col, row);
+   }
+}
+
 function showStatus(txt) {
    if (true) { return; }
    var el = document.getElementById("status");
@@ -224,7 +247,31 @@ function findTileOnBoard(ele) {
    return [ -1, -1 ];
 }
 
-function createTile(letter) {
+function createBoardTile(letter) {
+   var score = letterscore[letter];
+	var tile = document.createElement("div");
+	document.body.appendChild(tile);
+	tile.setAttribute("class", "tile");
+	tile.style.width = tilewidth.toString() + "px";
+	tile.style.height = tilewidth.toString() + "px";
+
+	var tiletext = document.createElement("div");
+   tile.appendChild(tiletext);
+	tiletext.setAttribute("class", "tiletext noselect");
+   tiletext.innerHTML = letter;
+	tiletext.style.width = tilewidth.toString() + "px";
+	tiletext.style.height = tilewidth.toString() + "px";
+
+	var tilescore = document.createElement("div");
+   tile.appendChild(tilescore);
+	tilescore.setAttribute("class", "tilescore noselect");
+   tilescore.innerHTML = score.toString();
+
+   tile.style.color = "#404040";
+   return tile;
+}
+
+function createRackTile(letter) {
    var score = letterscore[letter];
 	var tile = document.createElement("div");
 	document.body.appendChild(tile);
@@ -422,10 +469,11 @@ function dragElement(ele) {
    var deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
    var startTop = 0, startLeft = 0;
 
-   // if this is a frozen tile, dragging isn't allowed
-   if (frozentiles.indexOf(ele) > -1) {
-      return;
-   }
+   // TODO REMOVE THIS   
+//   // if this is a frozen tile, dragging isn't allowed
+//   if (frozentiles.indexOf(ele) > -1) {
+//      return;
+//   }
 
    ele.onmousedown = dragMouseDown;
    ele.addEventListener("touchstart", dragMouseDown, false);
@@ -538,6 +586,8 @@ function click_pass_button() {
 }
 
 function click_play_button() {
+   turnPlayedTiles = [];
+
    if (state != ClientState.turn) {
       return;
    }
@@ -550,6 +600,7 @@ function click_play_button() {
       if (br > -1 && bc > -1) {
          var letter = tileText(tileUi);
          play.push([letter, br, bc]);
+         turnPlayedTiles.push([tileUi, br, bc]);
       }
    }
 
@@ -783,9 +834,18 @@ sock.onmessage = function (event) {
 
       if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD") {
          state = ClientState.turn;
+         click_shuf_tiles();
          return;
       } else if (msg[0] == "PLAY-OKAY") {
          state = ClientState.wait_turn;
+         // remove tiles that have been played from the board
+         // and remove them from handTilesUi
+         for (var i=0; i<turnPlayedTiles.length; ++i) {
+            var lrc = turnPlayedTiles[i];
+            boardtiles[lrc[1]][lrc[2]] = null;
+            handTilesUi = handTilesUi.filter(function(val) { return val != lrc[0] });
+            lrc[0].remove()
+         }
          return;
       } else if (msg[0] == "PASS-OKAY") {
          state = ClientState.wait_turn;
@@ -795,7 +855,6 @@ sock.onmessage = function (event) {
    }
 
    // Commands that work in several state
-
    if (msg[0] == "SCORE") {
       processScoreMessage(msg);
 
@@ -805,6 +864,13 @@ sock.onmessage = function (event) {
 
    } else if (msg[0] == "TURN") {
       processTurnMessage(msg);
+
+   } else if (msg[0] == "BOARDTILES") {
+      processBoardTilesMessage(msg);
+
+   } else if (msg[0] == "RACKTILES") {
+         processRackTilesMessage(msg);
+
    }
 
 }
@@ -843,14 +909,6 @@ function connect_as_player() {
    state = ClientState.wait_join_ack;
 }
 
-
-//setTileInRack( createTile("Z"), 0 );
-//setTileInRack( createTile("A"), 1 );
-//setTileInRack( createTile("F"), 2 );
-//setTileInRack( createTile("Q"), 3 );
-//setTileInRack( createTile("J"), 4 );
-//setTileInRack( createTile("L"), 5 );
-//setTileInRack( createTile("V"), 6 );
 
 -->
 </script>

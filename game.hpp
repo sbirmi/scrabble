@@ -114,7 +114,7 @@ class Inst {
 private:
    unsigned int gid;
    const WordList *wl;
-   const unsigned int maxPlayers = 2;
+   const unsigned int maxPlayers;
    std::vector<Player *> players;
    bool gameOver;
    HandleClient viewers;
@@ -136,9 +136,13 @@ private:
    Json::Value get_others_turn_message();
 
    // Game event handling
+   bool is_new_tile(unsigned int r,
+                    unsigned int c) const;
    void start_game(HandleResponseList &hrl);
    void next_turn();
-   // returns negative value if score is 0
+   int play_word_score(const PlayMove &,
+                       bool wordAlongRow);
+   // returns negative value if invalid word
    int play_score(const std::vector<PlayMove>&);
    std::string issue_tiles(unsigned int plIdx,
                            HandleResponseList& hrl);
@@ -176,6 +180,8 @@ private:
    Json::Value jsonify(const std::string&, const std::string&);
    Json::Value jsonify(const std::string&, const std::string&,
                        const std::string&);
+   Json::Value jsonify(const char letter, unsigned int row,
+                       unsigned int col);
    HandleResponse generateResponse(
          const Handle& hdl, Json::Value json);
 

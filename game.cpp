@@ -19,6 +19,44 @@ std::map<char, unsigned int> letterScore = {
    {'v', 0}, {'w', 0}, {'x', 0}, {'y', 0}, {'z', 0},
 };
 
+const unsigned int
+letterMultiplier[15][15] = {
+   {1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1},
+   {1, 1, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 1, 1},
+   {1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1},
+   {2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1},
+   {1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1},
+   {1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1},
+   {1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1},
+   {1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2},
+   {1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1},
+   {1, 1, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 1, 1},
+   {1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1},
+};
+
+const unsigned int
+wordMultiplier[15][15] = {
+   {3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3},
+   {1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1},
+   {1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1},
+   {1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1},
+   {1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {3, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+   {1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1},
+   {1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1},
+   {1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1},
+   {3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3},
+};
+
 std::string
 randomString() {
    static std::string lastRandomString = "";
@@ -97,6 +135,17 @@ Inst::jsonify(const std::string& s1, const std::string& s2,
    return json;
 }
 
+Json::Value
+Inst::jsonify(const char letter, unsigned int row, unsigned int col) {
+   Json::Value json;
+   std::string s=" ";
+   s[0] = letter;
+   json.append(Json::Value(s));
+   json.append(Json::Value(row));
+   json.append(Json::Value(col));
+   return json;
+}
+
 HandleResponse
 Inst::generateResponse(const Handle& hdl, Json::Value json) {
    return HandleResponse(hdl, stringify(json));
@@ -131,6 +180,11 @@ Inst::get_others_turn_message() {
 //
 // Game event handling
 //
+bool
+Inst::is_new_tile(unsigned int r, unsigned int c) const {
+   return (boardRC[r][c] == ' ' && tempBoardRC[r][c] != ' ');
+}
+
 void
 Inst::next_turn() {
    turnIndex = (turnIndex + 1) % maxPlayers;
@@ -142,11 +196,85 @@ Inst::next_turn() {
 }
 
 int
+Inst::play_word_score(const PlayMove &pm,
+                      bool wordAlongRow) {
+   std::string word = "";
+   int score = 0;
+
+   int minC=pm.col, maxC = pm.col;
+   int minR=pm.row, maxR=pm.row;
+   if (wordAlongRow) {
+      for (int c=pm.col; c >= 0 && tempBoardRC[pm.row][c] != ' '; --c) {
+         minC = c;
+      }
+      for (int c=pm.col; c < 15 && tempBoardRC[pm.row][c] != ' '; ++c) {
+         maxC = c;
+      }
+
+      for (int c=minC; c<=maxC; ++c) {
+         word.push_back(tempBoardRC[pm.row][c]);
+      }
+
+   } else {
+      for (int r=pm.row; r >= 0 && tempBoardRC[r][pm.col] != ' '; --r) {
+         minR = r;
+      }
+      for (int r=pm.row; r < 15 && tempBoardRC[r][pm.col] != ' '; ++r) {
+         maxR = r;
+      }
+
+      for (int r=minR; r<=maxR; ++r) {
+         word.push_back(tempBoardRC[r][pm.col]);
+      }
+   }
+
+   std::cout << __FUNCTION__
+             << " " << pm.letter << " " << pm.row << "," << pm.col
+             << " [" << minR << "," << maxR << "]"
+             << " [" << minC << "," << maxC << "]"
+             << " wordAlongRow=" << wordAlongRow
+             << " word=" << word << std::endl;
+
+   if (word.size() == 1) {
+      return 0;
+   }
+
+   std::string uppercaseWord = word;
+   for (unsigned int i=0; i<word.size(); ++i) {
+      uppercaseWord[i] = toupper(word[i]);
+   }
+
+   if (!wl->is_valid(uppercaseWord)) {
+      // word not in the dictionary
+      std::cerr << __FUNCTION__ << " word isn't in the word list" << std::endl;
+      return -1;
+   }
+
+   // it's a valid word. Calculate the score for it
+   unsigned int wordMult = 1;
+   for (unsigned int r=minR; r <= (unsigned int) maxR; ++r) {
+      for (unsigned int c=minC; c <= (unsigned int) maxC; ++c) {
+         char letter = tempBoardRC[r][c];
+         bool is_new = is_new_tile(r, c);
+
+         score += letterScore[letter] * (is_new ? letterMultiplier[r][c] : 1);
+         wordMult *= is_new ? wordMultiplier[r][c] : 1;
+      }
+   }
+
+   score *= wordMult;
+
+   std::cout << __FUNCTION__ << " word=" << word << " score=" << score << std::endl;
+   return score;
+}
+
+int
 Inst::play_score(const std::vector<PlayMove>& play) {
    // Verify each character played in the move were in the hand
    std::string tilesplayed;
    for (const auto& pm : play) {
       if (pm.letter == ' ') {
+         std::cerr << __FUNCTION__ << " blank letter can't be assigned" << std::endl;
          return -1;
       }
       tilesplayed.push_back(pm.letter);
@@ -162,21 +290,22 @@ Inst::play_score(const std::vector<PlayMove>& play) {
          idx = handtiles.find(' ');
       } else {
          // illegal character
+         std::cerr << __FUNCTION__ << " non-alphabet letter played" << std::endl;
          return -1;
       }
 
       if (idx == std::string::npos) {
          // playing a character that's not in the hand
+         std::cerr << __FUNCTION__ << " playing a tile that's not in player's hand" << std::endl;
          return -1;
       }
 
       handtiles[idx] = '*';
    }
 
-   // create a temp board from the actual board and
-   // add tiles
-   for (unsigned int r=0; r<15; ++r) {
-      for (unsigned int c=0; c<15; ++c) {
+   // create a temp board from the actual board and add tiles
+   for (unsigned r=0; r<15; ++r) {
+      for (unsigned c=0; c<15; ++c) {
          tempBoardRC[r][c] = boardRC[r][c];
          tempBoardScoreRC[r][c] = boardscoreRC[r][c];
       }
@@ -185,19 +314,21 @@ Inst::play_score(const std::vector<PlayMove>& play) {
    for (const auto& pm : play) {
       if (tempBoardRC[pm.row][pm.col] != ' ') {
          // can't place a tile on top of an existing tiles
+         std::cerr << __FUNCTION__ << " playing a new tile on an existing tile" << std::endl;
          return -1;
       }
 
-      tempBoardRC[pm.row][pm.col] = toupper(pm.letter);
+      tempBoardRC[pm.row][pm.col] = pm.letter;
       tempBoardScoreRC[pm.row][pm.col] = letterScore[pm.letter];
    }
 
    // check two tiles are not placed on the same place
    for (unsigned int i=0; i<play.size() - 1; ++i) {
-      for (unsigned int j=1; j<play.size(); ++j) {
+      for (unsigned int j=i+1; j<play.size(); ++j) {
          if (play[i].row == play[j].row &&
              play[i].col == play[j].col) {
             // placing more than 1 tile on the same spot
+            std::cerr << __FUNCTION__ << " two tiles are played on the same spot" << std::endl;
             return -1;
          }
       }
@@ -226,6 +357,7 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 
       if (!samerow && !samecol) {
          // played tiles are not in one row
+         std::cerr << __FUNCTION__ << " played tiles are not in the same row or the same column" << std::endl;
          return -1;
       }
    }
@@ -243,8 +375,15 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 
       if (!boardCenterOccupied) {
          // first move is off-center
+         std::cerr << __FUNCTION__ << " first turn must cover center spot" << std::endl;
          return -1;
       }
+
+//      if (play.size() == 1) {
+//         // first word can't be a single tile
+//         std::cerr << __FUNCTION__ << " first turn must play two tiles" << std::endl;
+//         return -1;
+//      }
    }
 
    if (play.size() == 1) {
@@ -255,26 +394,72 @@ Inst::play_score(const std::vector<PlayMove>& play) {
    // it's the same row or same column
    if (play.size() > 1) {
       if (samerow) {
-         for (unsigned int col = minCol; col<=maxCol; ++col) {
+         for (unsigned int col=minCol; col<=maxCol; ++col) {
             if (tempBoardRC[minRow][col] == ' ') {
+               std::cerr << __FUNCTION__ << " there is a gap between the tiles played" << std::endl;
                return -1;
             }
          }
       }
 
       if (samecol) {
-         for (unsigned int row = minRow; row<=maxRow; ++row) {
+         for (unsigned int row=minRow; row<=maxRow; ++row) {
             if (tempBoardRC[row][minCol] == ' ') {
+               std::cerr << __FUNCTION__ << " there is a gap between the tiles played" << std::endl;
                return -1;
             }
          }
       }
    }
 
-   // TODO calculate score while checking the words are valid
+   // calculate score while checking the words are valid
+   bool first = true;
+   unsigned int total_score = 0;
+   for (const auto& pm : play) {
+      int word_score;
 
-   ++movesMade;
-   return 0;
+      word_score = play_word_score(pm, !samerow);
+      if (word_score < 0) {
+         // invalid word
+         return -1;
+      }
+      total_score += word_score;
+
+      if (first) {
+         word_score = play_word_score(pm, samerow);
+         if (word_score < 0) {
+            // invalid word
+            return -1;
+         }
+         total_score += word_score;
+
+         first = false;
+      }
+   }
+
+   if (play.size() == 7) {
+      // We have a bingo at our hand!
+      total_score += 50;
+   }
+
+
+   // the move was successful. copy tempBoardRC/tempBoardScoreRC
+   // to boardRC/boardscoreRC
+   for (unsigned r=0; r<15; ++r) {
+      for (unsigned c=0; c<15; ++c) {
+         boardRC[r][c] = tempBoardRC[r][c];
+         boardscoreRC[r][c] = tempBoardScoreRC[r][c];
+      }
+   }
+
+   // remove the tiles from hand
+   players[turnIndex]->hand = "";
+   for (const auto& c : handtiles) {
+      if (c != '*')
+         players[turnIndex]->hand.push_back(c);
+   }
+
+   return total_score;
 }
 
 void
@@ -339,6 +524,20 @@ Inst::dump_game_state(const Handle& hdl, HandleResponseList &hrl) {
       Json::Value msg = (cm == (int)turnIndex) ? get_player_turn_message() : get_others_turn_message();
       hrl.push_back(generateResponse(hdl, msg));
    }
+
+   // send boardtiles on the board
+   Json::Value boardtiles = jsonify("BOARDTILES");
+   for (unsigned int r=0; r<15; ++r) {
+      for (unsigned int c=0; c<15; ++c) {
+         if (boardRC[r][c] != ' ') {
+            boardtiles.append(jsonify(boardRC[r][c], r, c));
+         }
+      }
+   }
+   if (boardtiles.size() > 1) {
+      hrl.push_back(generateResponse(hdl, boardtiles));
+   }
+
 }
 
 
@@ -557,14 +756,33 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    }
 
    int score = play_score(play);
-   if (score <0) {
-      std::cerr << "out of turn: bad move" << std::endl;
+   if (score < 0) {
+      std::cerr << "out of turn: play_score() returned negative score" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad move")));
       return hrl;
    }
 
+   ++movesMade;
+
    // Player turnIndex wants to pass
    hrl.push_back(generateResponse(hdl, jsonify("PLAY-OKAY")));
+
+   // notify everyone that new tiles are appearing on the board
+   Json::Value boardtiles = jsonify("BOARDTILES");
+   for (const auto& pm : play) {
+      boardtiles.append(jsonify(pm.letter, pm.row, pm.col));
+   }
+   broadcast_json_message(hrl, boardtiles);
+
+   // TODO are all players out of tiles? If so, end the game
+
+   // issue new tiles to the player
+   issue_tiles(turnIndex, hrl);
+
+   // advertise score to everyone
+   players[turnIndex]->score += score;
+   broadcast_score_messages(hrl);
+
    next_turn(); 
    broadcast_turn_messages(hrl);
    return hrl;
@@ -590,6 +808,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
 Inst::Inst(unsigned int _gid, const WordList *_wl) :
       gid(_gid),
       wl(_wl),
+      maxPlayers(2),
+      gameOver(false),
       movesMade(0),
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
@@ -610,8 +830,6 @@ Inst::Inst(unsigned int _gid, const WordList *_wl) :
          boardRC[r][c] = ' ';
       }
    }
-
-   gameOver = false;
 }
 
 void
