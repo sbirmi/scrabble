@@ -39,7 +39,7 @@ SERVER -> CLIENT:
       [ "PLAY", <turn-key>, [ "A", r, c ], [ "b", r, c ], ]
 
       SERVER -> CLIENT:
-         [ "PLAY-OKAY", ]
+         [ "PLAY-OKAY", "letters" ]     // TODO (tell all clients for player to delete keys)
          [ "PLAY-BAD", <reason> ]
             - out of turn
             - bad turnkey

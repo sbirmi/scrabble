@@ -748,11 +748,13 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    }
 
    std::vector<PlayMove> play;
+   std::string word_played;
    for (unsigned int i=2; i<cmdJson.size(); ++i) {
       PlayMove pm = { cmdJson[i][0].asString()[0],
                       cmdJson[i][1].asUInt(),
                       cmdJson[i][2].asUInt() };
       play.push_back(pm);
+      word_played.push_back(cmdJson[i][0].asString()[0]);
    }
 
    int score = play_score(play);
@@ -765,7 +767,10 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    ++movesMade;
 
    // Player turnIndex wants to pass
-   hrl.push_back(generateResponse(hdl, jsonify("PLAY-OKAY")));
+   for (const auto& hdlClient : players[turnIndex]->clients) {
+      hrl.push_back(generateResponse(hdlClient.first,
+                                     jsonify("PLAY-OKAY", word_played)));
+   }
 
    // notify everyone that new tiles are appearing on the board
    Json::Value boardtiles = jsonify("BOARDTILES");

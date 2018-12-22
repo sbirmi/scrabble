@@ -107,7 +107,7 @@ var tilewidth = 63;
 
 var myName = "";
 var turnKey = "";
-var turnPlayedTiles = [];
+var turnPlayedTiles = []; // TODO can be removed
 
 var playerScoreList = [];
 
@@ -140,6 +140,50 @@ var letterscore = {
 function showPlayerScore(plIdx, score) {
    var scoreUi = document.getElementById("playerscore" + plIdx);
    scoreUi.innerHTML = score;
+}
+
+function processPlayOkayMessage(msg) {
+   // move all the tiles back to the rack
+   click_shuf_tiles();
+   for (var lidx=0; lidx<msg[1].length; ++lidx) {
+      var letterPlayed = msg[1][lidx];
+
+      // remove from handTilesUi
+      for (var i=0; i<handTilesUi.length; ++i) {
+         var handLetter = tileText(handTilesUi[i]);
+
+         if (handLetter == letterPlayed) {
+            handTilesUi.splice(i, 1);
+         }
+      }
+
+      // remove from racktiles
+      for (var i=0; i<7; ++i) {
+         if (racktiles[i]) {
+            console.log("tile in rack at spot " + i + " is " + racktiles[i]);
+            console.log("letterPlayed = " + letterPlayed);
+            console.log("tiletext = " + (racktiles[i]?tileText(racktiles[i]):"_") );
+
+            var rackletter = tileText(racktiles[i]);
+
+            if (rackletter == letterPlayed) {
+               racktiles[i].remove();
+               racktiles[i] = null;
+               console.log( "MATCH 1" );
+               break;
+            }
+
+            if (upperLetterOrBlank(rackletter) ==
+                upperLetterOrBlank(letterPlayed)) {
+               racktiles[i].remove();
+               racktiles[i] = null;
+               console.log( "MATCH 2" );
+               break;
+            }
+         }
+      }
+   }
+
 }
 
 function processScoreMessage(scoreMsg) {
@@ -322,6 +366,10 @@ function tileText(ele) {
       }
    }
    return "";
+}
+
+function upperLetterOrBlank(letter) {
+   return (letter == letter.toLowerCase()) ? " " : letter;
 }
 
 function rackposName(idx) {
@@ -753,17 +801,6 @@ for (var i=0; i<7; i++) {
 <script>
 // WEB-SOCKET
 
-/*
-State
-   0 = uninitialized
-   1 = waiting for ack on viewer
-   2 = viewer
-   3 = waiting to connect as player
-   4 = waiting for game to start
-   5 = your turn
-   6 = other's turn
-   7 = game over
-*/
 var ClientState = Object.freeze({
    "start": 0,
    "wait_viewer_ack": 1,
@@ -777,7 +814,8 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-var sock = new WebSocket("ws://hyp:5011/");
+//var sock = new WebSocket("ws://sharadb.net:5051/");
+var sock = new WebSocket("ws://192.168.1.221:5051/");
 sock.onopen = function (event) {
    console.log("connected to server");
    console.log(event);
@@ -838,14 +876,7 @@ sock.onmessage = function (event) {
          return;
       } else if (msg[0] == "PLAY-OKAY") {
          state = ClientState.wait_turn;
-         // remove tiles that have been played from the board
-         // and remove them from handTilesUi
-         for (var i=0; i<turnPlayedTiles.length; ++i) {
-            var lrc = turnPlayedTiles[i];
-            boardtiles[lrc[1]][lrc[2]] = null;
-            handTilesUi = handTilesUi.filter(function(val) { return val != lrc[0] });
-            lrc[0].remove()
-         }
+         processPlayOkayMessage(msg);
          return;
       } else if (msg[0] == "PASS-OKAY") {
          state = ClientState.wait_turn;
@@ -869,7 +900,15 @@ sock.onmessage = function (event) {
       processBoardTilesMessage(msg);
 
    } else if (msg[0] == "RACKTILES") {
-         processRackTilesMessage(msg);
+      processRackTilesMessage(msg);
+
+   } else if (msg[0] == "PLAY-OKAY") {
+      state = ClientState.wait_turn;
+      processPlayOkayMessage(msg);
+
+   } else if (msg[0] == "PASS-OKAY") {
+      state = ClientState.wait_turn;
+      return;
 
    }
 
