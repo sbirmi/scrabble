@@ -210,6 +210,10 @@ function processScoreMessage(scoreMsg) {
          playerscore.className = "player";
          playerscore.id = "playerscore" + j;
 
+         if (scoreMsg[1] == myName) {
+            playername.style.textDecoration = "underline";
+         }
+
          cell.appendChild(playername);
          cell.appendChild(playerscore);
       }
