@@ -90,7 +90,7 @@ class Player {
 private:
    HandleClient clients;
    std::string name;
-   unsigned int score = 0;
+   int score = 0;
    std::string hand;
    std::string passwd;
    // Since there maybe multiple clients,
@@ -119,7 +119,7 @@ private:
    bool gameOver;
    HandleClient viewers;
    HandleMode handleMode;
-   unsigned int boardscoreRC[15][15] = {0};
+   int boardscoreRC[15][15] = {0};
    unsigned int tempBoardScoreRC[15][15] = {0};
    char boardRC[15][15];
    char tempBoardRC[15][15];
@@ -139,7 +139,7 @@ private:
    bool is_new_tile(unsigned int r,
                     unsigned int c) const;
    void start_game(HandleResponseList &hrl);
-   void next_turn();
+   void next_turn(HandleResponseList &hrl);
    int play_word_score(const PlayMove &,
                        bool wordAlongRow);
    // returns negative value if invalid word
@@ -175,7 +175,7 @@ private:
 
    // convenience methods
    std::string stringify(const Json::Value& json);
-   Json::Value jsonify(unsigned int);
+   Json::Value jsonify(int);
    Json::Value jsonify(const std::string&);
    Json::Value jsonify(const std::string&, const std::string&);
    Json::Value jsonify(const std::string&, const std::string&,

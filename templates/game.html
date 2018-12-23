@@ -142,6 +142,14 @@ function showPlayerScore(plIdx, score) {
    scoreUi.innerHTML = score;
 }
 
+function processGameOverMessage(msg) {
+   document.getElementById("shufbutton").disabled = true;
+   document.getElementById("exchbutton").disabled = true;
+   document.getElementById("passbutton").disabled = true;
+   document.getElementById("playbutton").disabled = true;
+   sock.close();
+}
+
 function processPlayOkayMessage(msg) {
    // move all the tiles back to the rack
    click_shuf_tiles();
@@ -154,6 +162,7 @@ function processPlayOkayMessage(msg) {
 
          if (handLetter == letterPlayed) {
             handTilesUi.splice(i, 1);
+            break;
          }
       }
 
@@ -210,7 +219,7 @@ function processScoreMessage(scoreMsg) {
          playerscore.className = "player";
          playerscore.id = "playerscore" + j;
 
-         if (scoreMsg[1] == myName) {
+         if (scoreMsg[i] == myName) {
             playername.style.textDecoration = "underline";
          }
 
@@ -627,6 +636,7 @@ function click_shuf_tiles() {
       var randomPos = Math.floor(Math.random() * 7);
       setTileInRack(tileUi, randomPos);
    }
+
 }
 
 function click_pass_button() {
@@ -819,7 +829,7 @@ var ClientState = Object.freeze({
 var state = ClientState.start;
 
 //var sock = new WebSocket("ws://sharadb.net:5051/");
-var sock = new WebSocket("ws://192.168.1.221:5051/");
+var sock = new WebSocket("ws://192.168.1.221:5052/");
 sock.onopen = function (event) {
    console.log("connected to server");
    console.log(event);
@@ -890,7 +900,10 @@ sock.onmessage = function (event) {
    }
 
    // Commands that work in several state
-   if (msg[0] == "SCORE") {
+   if (msg[0] == "GAME-OVER") {
+      processGameOverMessage(msg);
+
+   } else if (msg[0] == "SCORE") {
       processScoreMessage(msg);
 
       for (var i=0; i<playerScoreList.length; i++) {

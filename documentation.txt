@@ -54,6 +54,9 @@ SERVER -> CLIENT:
          [ "EXCH-BAD", <turn-key>, <reason> ]
             - such as out of turn
 
+SERVER -> CLIENT:
+   [ "GAME-OVER" ]
+
 
 
 ------------------------------------------------

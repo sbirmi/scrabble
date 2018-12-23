@@ -106,7 +106,7 @@ Inst::stringify(const Json::Value& json) {
 }
 
 Json::Value
-Inst::jsonify(unsigned int i) {
+Inst::jsonify(int i) {
    return Json::Value(i);
 }
 
@@ -186,13 +186,45 @@ Inst::is_new_tile(unsigned int r, unsigned int c) const {
 }
 
 void
-Inst::next_turn() {
+Inst::next_turn(HandleResponseList &hrl) {
+   // Check if the current player finished playing
+   // all the tiles
+   if (players[turnIndex]->hand == "") {
+      gameOver = true;
+      for (const auto& pl : players) {
+         pl->state = game_over;
+      }
+
+      std::cout << players[turnIndex]->name << " is out of tiles" << std::endl;
+
+      // Subtracts points from all other players' hand
+      // and add it to us
+      for (const auto& pl : players) {
+         int this_player_score = 0;
+         for (const auto& letter : pl->hand) {
+            this_player_score += letterScore[letter]; 
+         }
+
+         std::cout << "Player " << pl->name
+                   << " is left with '" << pl->hand << "'. Subtracting "
+                   << this_player_score << std::endl;
+         pl->score -= this_player_score;
+         players[turnIndex]->score += this_player_score;
+      }
+      broadcast_score_messages(hrl);
+      broadcast_json_message(hrl, jsonify("GAME-OVER"));
+      return;
+   }
+
+
    turnIndex = (turnIndex + 1) % maxPlayers;
    for (auto const& pl : players) {
       pl->state = await_turn;
    }
    players[turnIndex]->turnkey = randomString();
    players[turnIndex]->state = turn;
+
+   broadcast_turn_messages(hrl);
 }
 
 int
@@ -474,8 +506,7 @@ Inst::start_game(HandleResponseList &hrl) {
       issue_tiles(plIdx, hrl);
    }
 
-   next_turn();
-   broadcast_turn_messages(hrl);
+   next_turn(hrl);
 }
 
 std::string
@@ -507,7 +538,22 @@ Inst::dump_game_state(const Handle& hdl, HandleResponseList &hrl) {
       hrl.push_back(generateResponse(hdl, get_score_json()));
    }
 
+   // send boardtiles on the board
+   Json::Value boardtiles = jsonify("BOARDTILES");
+   for (unsigned int r=0; r<15; ++r) {
+      for (unsigned int c=0; c<15; ++c) {
+         if (boardRC[r][c] != ' ') {
+            boardtiles.append(jsonify(boardRC[r][c], r, c));
+         }
+      }
+   }
+   if (boardtiles.size() > 1) {
+      hrl.push_back(generateResponse(hdl, boardtiles));
+   }
+
+   // If game is over, end the game
    if (gameOver) {
+      hrl.push_back(generateResponse(hdl, jsonify("GAME-OVER")));
       return;
    }
 
@@ -524,20 +570,6 @@ Inst::dump_game_state(const Handle& hdl, HandleResponseList &hrl) {
       Json::Value msg = (cm == (int)turnIndex) ? get_player_turn_message() : get_others_turn_message();
       hrl.push_back(generateResponse(hdl, msg));
    }
-
-   // send boardtiles on the board
-   Json::Value boardtiles = jsonify("BOARDTILES");
-   for (unsigned int r=0; r<15; ++r) {
-      for (unsigned int c=0; c<15; ++c) {
-         if (boardRC[r][c] != ' ') {
-            boardtiles.append(jsonify(boardRC[r][c], r, c));
-         }
-      }
-   }
-   if (boardtiles.size() > 1) {
-      hrl.push_back(generateResponse(hdl, boardtiles));
-   }
-
 }
 
 
@@ -709,8 +741,7 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value &json) {
 
    // Player turnIndex wants to pass
    hrl.push_back(generateResponse(hdl, jsonify("PASS-OKAY")));
-   next_turn(); 
-   broadcast_turn_messages(hrl);
+   next_turn(hrl); 
    return hrl;
 }
 
@@ -788,8 +819,7 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    players[turnIndex]->score += score;
    broadcast_score_messages(hrl);
 
-   next_turn(); 
-   broadcast_turn_messages(hrl);
+   next_turn(hrl); 
    return hrl;
 }
 
@@ -799,6 +829,9 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
 
    if (cmd == "VIEW") {
       return process_cmd_view(hdl, json);
+   } else if (gameOver) {
+      std::cout << "Game over. Can't process " << cmd << std::endl;
+      return HandleResponseList();
    } else if (cmd == "JOIN") {
       return process_cmd_join(hdl, json);
    } else if (cmd == "PASS") {
