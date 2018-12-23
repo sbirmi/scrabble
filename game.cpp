@@ -177,6 +177,16 @@ Inst::get_others_turn_message() {
    return jsonify("TURN", players[turnIndex]->name);
 }
 
+bool
+Inst::touches_old_tile(unsigned int r, unsigned int c) {
+   if (r-1 >= 0 && boardRC[r-1][c] != ' ') { return true; }
+   if (r+1 < 15 && boardRC[r+1][c] != ' ') { return true; }
+   if (c-1 >= 0 && boardRC[r][c-1] != ' ') { return true; }
+   if (c+1 < 15 && boardRC[r][c+1] != ' ') { return true; }
+
+   return false;
+}
+
 //
 // Game event handling
 //
@@ -416,6 +426,23 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 //         std::cerr << __FUNCTION__ << " first turn must play two tiles" << std::endl;
 //         return -1;
 //      }
+   }
+  
+   // check that new tiles touch at least an old tile
+   if (movesMade > 0) {
+      bool connects = false;
+
+      for (const auto& pm : play) {
+         if (touches_old_tile(pm.row, pm.col)) {
+            connects = true;
+            break;
+         }
+      }
+
+      if (!connects) {
+         std::cerr << __FUNCTION__ << " new word doesn't touch old tiles" << std::endl;
+         return -1;
+      }
    }
 
    if (play.size() == 1) {

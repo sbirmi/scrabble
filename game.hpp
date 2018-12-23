@@ -135,6 +135,8 @@ private:
    Json::Value get_player_turn_message();
    Json::Value get_others_turn_message();
 
+   bool touches_old_tile(unsigned int r, unsigned int c);
+
    // Game event handling
    bool is_new_tile(unsigned int r,
                     unsigned int c) const;
