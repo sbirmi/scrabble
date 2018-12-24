@@ -683,7 +683,7 @@ function click_play_button() {
 <table border=0 width=100%>
 <tr><td align=center>
    <!-- board -->
-   <table id="board" border=0></table>
+   <table id="board" border=0 width="991px" height="991px"></table>
 
    <table border=0>
    <tr id="bottompanel">
@@ -710,20 +710,6 @@ function click_play_button() {
       </td>
    </tr>
    </table>
-
-
-   <!-- score -->
-<!--
-      <td class="player">
-         <span id="name1">waiting..</span> (<span id="score1">0</span>)
-      </td>
-      <td width=30px></td>
-      <td width=30px></td>
-      <td class="player">
-         <span id="name2">waiting..</span> (<span id="score2">0</span>)
-      </td>
--->
-
 
 </td></tr>
 </table>
@@ -828,8 +814,8 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-//var sock = new WebSocket("ws://sharadb.net:5051/");
-var sock = new WebSocket("ws://192.168.1.221:5051/");
+var sock = new WebSocket("ws://sharadb.net:5051/");
+//var sock = new WebSocket("ws://192.168.1.221:5052/");
 sock.onopen = function (event) {
    console.log("connected to server");
    console.log(event);

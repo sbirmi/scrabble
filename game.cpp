@@ -88,7 +88,13 @@ Player::maybeRemoveClient(const Handle& hdl) {
    Client *cl = clients[hdl];
    delete cl;
 
+   unsigned int size_before = clients.size();
    clients.erase(hdl);
+   if (size_before != clients.size()) {
+      std::cerr << __PRETTY_FUNCTION__  << " player " << name
+                << " number of clients before " << size_before
+                << " and after " << clients.size() << std::endl;
+   }
    return true;
 }
 
