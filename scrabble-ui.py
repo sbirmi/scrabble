@@ -1,10 +1,18 @@
 #!/usr/bin/env python
 
 from flask import Flask, render_template
-from flask import request
+from flask import send_from_directory
 
 
 app = Flask( __name__ )
+
+jsFiles = { "ui.js", "game.js", "globals.js" }
+
+@app.route('/js/<path>')
+def staticJs(path):
+    if path not in jsFiles:
+        return "not found"
+    return send_from_directory('js', path)
 
 @app.route('/')
 def mainpage():

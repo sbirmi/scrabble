@@ -6,7 +6,6 @@
 <!--
 body {
    background: steelblue;
-   overflow: hidden;
 }
 
 .tilescore {
@@ -22,6 +21,7 @@ body {
    position: absolute;
    background: #e6b988;
    border-radius: 3px;
+   z-index: 10;
 }
 
 .tiletext {
@@ -32,6 +32,7 @@ body {
 .board {
    background: black;
 }
+
 .tw {
    font: 12px "Open Sans", sans-serif;
    text-align: center;
@@ -48,6 +49,7 @@ body {
    font: 12px "Open Sans", sans-serif;
    text-align: center;
    background: #06a006;
+   vertical-align: middle;
 }
 
 .dl {
@@ -66,6 +68,7 @@ body {
 
 .tileblank {
    background: #e0ffe0;
+   position: relative;
 }
 
 .button {
@@ -98,584 +101,9 @@ body {
 -->
 </style>
 
-<script>
-<!--
-
-// globals
-var boardcell = 65;
-var tilewidth = 63;
-
-var myName = "";
-var turnKey = "";
-var turnPlayedTiles = []; // TODO can be removed
-
-var playerScoreList = [];
-
-var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
-var racktiles = [ null, null, null, null, null, null, null ];
-//var frozentiles = [];
-var rackspotEles = [];
-
-var dragObj = null;
-
-// Tiles in hand. They maybe on the rack
-// or on the board
-var handTilesUi = [];
-
-var letterscore = {
-   "A": 1, "B": 3, "C": 3, "D": 2, "E": 1,
-   "F": 4, "G": 2, "H": 4, "I": 1, "J": 8,
-   "K": 5, "L": 1, "M": 3, "N": 1, "O": 1,
-   "P": 3, "Q":10, "R": 1, "S": 1, "T": 1,
-   "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4,
-   "Z":10, " ": 0,
-   "a": 0, "b": 0, "c": 0, "d": 0, "e": 0,
-   "f": 0, "g": 0, "h": 0, "i": 0, "j": 0,
-   "k": 0, "l": 0, "m": 0, "n": 0, "o": 0,
-   "p": 0, "q": 0, "r": 0, "s": 0, "t": 0,
-   "u": 0, "v": 0, "w": 0, "x": 0, "y": 0,
-   "z": 0,
-}
-
-function showPlayerScore(plIdx, score) {
-   var scoreUi = document.getElementById("playerscore" + plIdx);
-   scoreUi.innerHTML = score;
-}
-
-function processGameOverMessage(msg) {
-   document.getElementById("shufbutton").disabled = true;
-   document.getElementById("exchbutton").disabled = true;
-   document.getElementById("passbutton").disabled = true;
-   document.getElementById("playbutton").disabled = true;
-   sock.close();
-}
-
-function processPlayOkayMessage(msg) {
-   // move all the tiles back to the rack
-   click_shuf_tiles();
-   for (var lidx=0; lidx<msg[1].length; ++lidx) {
-      var letterPlayed = msg[1][lidx];
-
-      // remove from handTilesUi
-      for (var i=0; i<handTilesUi.length; ++i) {
-         var handLetter = tileText(handTilesUi[i]);
-
-         if (handLetter == letterPlayed) {
-            handTilesUi.splice(i, 1);
-            break;
-         }
-      }
-
-      // remove from racktiles
-      for (var i=0; i<7; ++i) {
-         if (racktiles[i]) {
-            console.log("tile in rack at spot " + i + " is " + racktiles[i]);
-            console.log("letterPlayed = " + letterPlayed);
-            console.log("tiletext = " + (racktiles[i]?tileText(racktiles[i]):"_") );
-
-            var rackletter = tileText(racktiles[i]);
-
-            if (rackletter == letterPlayed) {
-               racktiles[i].remove();
-               racktiles[i] = null;
-               console.log( "MATCH 1" );
-               break;
-            }
-
-            if (upperLetterOrBlank(rackletter) ==
-                upperLetterOrBlank(letterPlayed)) {
-               racktiles[i].remove();
-               racktiles[i] = null;
-               console.log( "MATCH 2" );
-               break;
-            }
-         }
-      }
-   }
-
-}
-
-function processScoreMessage(scoreMsg) {
-   // Add to local playerScoreList
-   console.log(scoreMsg);
-   var j = 0;
-   // First token is message is "SCORE" so
-   // start from 1
-   for (var i=1; i<scoreMsg.length; i+=2) {
-      if (playerScoreList.length <= j) {
-         // Add a UI element to show score
-         // for the newly discovered player
-         var bottompanel = document.getElementById("bottompanel");
-         var cell = bottompanel.insertCell(-1);
-         cell.style.width = "30px";
-
-         var cell = bottompanel.insertCell(-1);
-         var playername = document.createElement("div");
-         playername.className = "player";
-         playername.id = "playername" + j;
-         playername.innerHTML = scoreMsg[i];
-
-         var playerscore = document.createElement("div");
-         playerscore.className = "player";
-         playerscore.id = "playerscore" + j;
-
-         if (scoreMsg[i] == myName) {
-            playername.style.textDecoration = "underline";
-         }
-
-         cell.appendChild(playername);
-         cell.appendChild(playerscore);
-      }
-      playerScoreList[j] = [ scoreMsg[i], scoreMsg[i+1] ];
-      document.getElementById("playerscore" + j).innerHTML = scoreMsg[i+1];
-      j++;
-   }
-}
-
-function processRackTilesMessage(msg) {
-   var newtiles = msg[1];
-   for (var i=0; i<newtiles.length; ++i) {
-      var tile = newtiles[i];
-      var tileUi = createRackTile(tile);
-      handTilesUi.push(tileUi);
-      setTileInRack(tileUi, 0);
-   }
-   document.getElementById("shufbutton").disabled = false;
-}
-
-function processTurnMessage(msg) {
-   var buttons_disabled = true;
-   if (msg[1] == myName) {
-      // my turn
-      state = ClientState.turn;
-      buttons_disabled = false;
-      turnKey = msg[2];
-   } else {
-      state = ClientState.wait_turn;
-      turnKey = "";
-   }
-
-   // Enabled/disable move buttons
-   document.getElementById("exchbutton").disabled = buttons_disabled;
-   document.getElementById("passbutton").disabled = buttons_disabled;
-   document.getElementById("playbutton").disabled = buttons_disabled;
-
-   for (var plIdx=0; plIdx<playerScoreList.length; ++plIdx) {
-      var className = "player";
-      if (playerScoreList[plIdx][0] == msg[1]) {
-         className = "playerturn";
-      }
-      var uiele = document.getElementById("playername" + plIdx);
-      uiele.className = className;
-   }
-}
-
-function processBoardTilesMessage(msg) {
-   for (var i=1; i<msg.length; ++i) {
-      var letter = msg[i][0];
-      var row = msg[i][1];
-      var col = msg[i][2];
-      var tileUi = createBoardTile(letter);
-
-      if (boardtiles[row][col]) {
-         var oldTile = boardtiles[row][col];
-         setTileInRack(oldTile, 0);
-         boardtiles[row][col] = null;
-      }
-      setTileOnBoard(tileUi, col, row);
-   }
-}
-
-function showStatus(txt) {
-   if (true) { return; }
-   var el = document.getElementById("status");
-   el.innerHTML = txt + "<br>" + el.innerHTML;
-}
-
-
-function findTileOnBoard(ele) {
-   coords = [ -1, -1 ];
-   for (var r=0; r<15; r++) {
-      var c = boardtiles[r].indexOf(ele);
-      if (c > -1) {
-         return [ r, c ]
-      }
-   }
-   return [ -1, -1 ];
-}
-
-function createBoardTile(letter) {
-   var score = letterscore[letter];
-	var tile = document.createElement("div");
-	document.body.appendChild(tile);
-	tile.setAttribute("class", "tile");
-	tile.style.width = tilewidth.toString() + "px";
-	tile.style.height = tilewidth.toString() + "px";
-
-	var tiletext = document.createElement("div");
-   tile.appendChild(tiletext);
-	tiletext.setAttribute("class", "tiletext noselect");
-   tiletext.innerHTML = letter;
-	tiletext.style.width = tilewidth.toString() + "px";
-	tiletext.style.height = tilewidth.toString() + "px";
-
-	var tilescore = document.createElement("div");
-   tile.appendChild(tilescore);
-	tilescore.setAttribute("class", "tilescore noselect");
-   tilescore.innerHTML = score.toString();
-
-   tile.style.color = "#404040";
-   return tile;
-}
-
-function createRackTile(letter) {
-   var score = letterscore[letter];
-	var tile = document.createElement("div");
-	document.body.appendChild(tile);
-	tile.setAttribute("class", "tile");
-	tile.style.width = tilewidth.toString() + "px";
-	tile.style.height = tilewidth.toString() + "px";
-
-	var tiletext = document.createElement("div");
-   tile.appendChild(tiletext);
-	tiletext.setAttribute("class", "tiletext noselect");
-   tiletext.innerHTML = letter;
-	tiletext.style.width = tilewidth.toString() + "px";
-	tiletext.style.height = tilewidth.toString() + "px";
-
-	var tilescore = document.createElement("div");
-   tile.appendChild(tilescore);
-	tilescore.setAttribute("class", "tilescore noselect");
-   tilescore.innerHTML = score.toString();
-
-   if (letter == " ") {
-      tile.style.color = "#0000ff";
-      tile.onclick = function(ev) {
-         var blankTileLetters = " abcdefghijklmnopqrstuvwxyz";
-         var idx = blankTileLetters.indexOf(tiletext.innerHTML);
-         if (ev.layerX > tilewidth/2) {
-            idx += 1;
-         } else {
-            idx -= 1;
-         }
-         if (idx == -1) {
-            idx += blankTileLetters.length;
-         } else {
-            idx = idx % blankTileLetters.length;
-         }
-         tiletext.innerHTML = blankTileLetters[idx];
-      }
-   }
-
-   dragElement(tile);
-   return tile;
-}
-
-function tileText(ele) {
-   for (var i=0; i<ele.children.length; ++i) {
-      var tile = ele.children[i];
-      if (tile.className.includes("tiletext")) {
-         return tile.innerHTML;
-      }
-   }
-   return "";
-}
-
-function upperLetterOrBlank(letter) {
-   return (letter == letter.toLowerCase()) ? " " : letter;
-}
-
-function rackposName(idx) {
-   return "rackpos" + idx.toString();
-}
-
-
-function coordsInRect(x, y, rect) {
-   return (x >= rect.left && x <= rect.right &&
-           y >= rect.top && y <= rect.bottom);
-}
-
-function dropOn(ele, x, y) {
-   // See if we are dropping the tile on the rack
-   var rackEle = document.getElementById("tilerack");
-   var rackEleRect = rackEle.getBoundingClientRect();
-   if (coordsInRect(x, y, rackEleRect)) {
-      for (var i=0; i < rackspotEles.length; i++) {
-         if (coordsInRect(x, y,rackspotEles[i].getBoundingClientRect())) {
-            console.log("Dropping tile at rack spot " + i);
-            setTileInRack(dragObj, i);
-            var prevR, prevC;
-            [prevR, prevC] = findTileOnBoard(dragObj);
-            if (prevR > -1 && prevC > -1) {
-               boardtiles[prevR][prevC] = null;
-            }
-            return true;
-         }
-      }
-   }
-
-   // See if we are droppnig the tile on the board
-   var boardEle = document.getElementById("board");
-   var boardEleRect = boardEle.getBoundingClientRect();
-   if (coordsInRect(x, y, boardEleRect)) {
-      var trs = boardEle.children[0].children;
-      for (var r=0; r<trs.length; r++) {
-         if (coordsInRect(x, y, trs[r].getBoundingClientRect())) {
-            var tds = trs[r].children;
-            for (var c=0; c<tds.length; c++) {
-               if (coordsInRect(x, y, tds[c].getBoundingClientRect())) {
-                  console.log("dropped " + dragObj.innerHTML + " on board at " + c + "," + r);
-
-                  success = setTileOnBoard(dragObj, c, r);
-                  if (success) {
-                     prevIdx = racktiles.indexOf(ele);
-                     if ( prevIdx > -1 ) {
-                        racktiles[prevIdx] = null;
-                     }
-                  }
-                  return success;
-               }
-            }
-         }
-      }
-      return true;
-   }
-   return false;
-}
-
-
-function setTileOnBoard(ele, c, r) {
-   if (c < 0 || c >= 15 || r < 0 || r >= 15) {
-      return false;
-   }
-
-   // Check if there is already a tile here. If so, return False
-   if (boardtiles[r][c]) {
-      return false;
-   }
-   // find old position of the tile on the board and remove from there
-
-   [prevR, prevC] = findTileOnBoard(ele);
-   if (prevR > -1) {
-      boardtiles[prevR][prevC] = null;
-   }
-
-   boardtiles[r][c] = ele;
-
-   var boardEle = document.getElementById("board");
-   var targetCell = boardEle.children[0].children[r].children[c];
-   var targetRect = targetCell.getBoundingClientRect();
-   ele.style.top = ( targetRect.top + 2 ) + "px";
-   ele.style.left = ( targetRect.left + 2 ) + "px";
-   return true;
-}
-
-function setTileInRack(ele, idx) {
-   if ( idx < 0 || idx >= 7 || ele == null ) { return; }
-
-   var prevIdx = racktiles.indexOf(ele);
-
-   if (racktiles[idx] == null || prevIdx == idx) {
-      if (prevIdx > -1 && prevIdx != idx) {
-         racktiles[prevIdx] = null;
-      }
-      racktiles[idx] = ele;
-      rackPlaceEle = document.getElementById(rackposName(idx));
-      parentPos = rackPlaceEle.getBoundingClientRect();
-      ele.style.top = ( parentPos.top + 1 ) + "px";
-      ele.style.left = ( parentPos.left + 1 ) + "px";
-
-      return;
-   }
-
-   // The tile is getting added to a spot where we already have a tile.
-
-   // See if the tile is picked from some place on the left on the rack.
-   // If so, move all tiles to the left
-   if (prevIdx > -1 && prevIdx < idx) {
-      for (var i=prevIdx; i<idx; i++) {
-         racktiles[i] = null;
-         setTileInRack(racktiles[i+1], i);
-      }
-      racktiles[idx] = null;
-      setTileInRack(ele, idx);
-      return;
-   }
-
-   // The tile came from the board
-   if (prevIdx > idx) {
-      for (var i=prevIdx; i>idx; i--) {
-         racktiles[i] = null;
-         setTileInRack(racktiles[i-1], i);
-      }
-      racktiles[idx] = null;
-      setTileInRack(ele, idx);
-      return;
-   }
-
-   // The tile came from the board and we should have a space
-   // somewhere on the rack. Place the tile there
-   blankIdx = racktiles.indexOf( null );
-   if ( blankIdx > -1 ) {
-      setTileInRack(ele, blankIdx);
-      return;
-   }
-
-   console.log("Not sure where the tlie came from!");
-   console.log(ele);
-
-}
-
-function dragElement(ele) {
-   var deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
-   var startTop = 0, startLeft = 0;
-
-   // TODO REMOVE THIS   
-//   // if this is a frozen tile, dragging isn't allowed
-//   if (frozentiles.indexOf(ele) > -1) {
-//      return;
-//   }
-
-   ele.onmousedown = dragMouseDown;
-   ele.addEventListener("touchstart", dragMouseDown, false);
-   ele.addEventListener("touchmove", elementDrag, false);
-   ele.addEventListener("touchcancel", closeDragElement, false);
-   ele.addEventListener("touchend", closeDragElement, false);
-
-   function dragMouseDown(e) {
-      e = e || window.event;
-      if (e instanceof MouseEvent) {
-         lastX = e.clientX;
-         lastY = e.clientY;
-      } else if (e instanceof TouchEvent) {
-         showStatus("touch event");
-         if (e.changedTouches.length > 0) {
-            var touch = e.changedTouches[0]
-            lastX = touch.pageX;
-            lastY = touch.pageY;
-         } else {
-            return;
-         }
-      } else {
-         return;
-      }
-      dragObj = e.target.parentElement;
-      startTop = dragObj.style.top;
-      startLeft = dragObj.style.left;
-      showStatus( "startLeft,startTop=" + startLeft + "," + startTop );
-      e.preventDefault();
-      document.onmouseup = closeDragElement;
-      document.onmousemove = elementDrag;
-      document.ontouchmove = elementDrag;
-   }
-
-   function elementDrag(e) {
-      e = e || window.event;
-      if (!e || !e.clientX) { return; }
-      e.preventDefault();
-      deltaX = lastX - e.clientX;
-      deltaY = lastY - e.clientY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      dragObj.style.top = (dragObj.offsetTop - deltaY) + "px";
-      dragObj.style.left = (dragObj.offsetLeft - deltaX) + "px";
-//      ele.style.top = (ele.offsetTop - deltaY) + "px";
-//      ele.style.left = (ele.offsetLeft - deltaX) + "px";
-   }
-
-   function closeDragElement(e) {
-      var stopX = e.clientX;
-      var stopY = e.clientY;
-
-      if (e instanceof TouchEvent) {
-         if (e.changedTouches.length > 0) {
-            var touch = e.changedTouches[0]
-            stopX = touch.pageX;
-            stopY = touch.pageY;
-         } else {
-            return;
-         }
-      }
-
-      showStatus("stopped dragging. dropped at " + stopX + " " + stopY);
-      var success = dropOn(dragObj, stopX, stopY);
-      if (!success) {
-         dragObj.style.top = startTop;
-         dragObj.style.left = startLeft;
-      }
-      dragObj = null;
-      document.onmouseup = null;
-      document.onmousemove = null;
-      document.ontouchmove = null;
-   }
-}
-
-function click_shuf_tiles() {
-   // 1. Remove the tile from the board and rack
-   for (var i=0; i<handTilesUi.length; ++i) {
-      var tileUi = handTilesUi[i];
-
-      // tileUi on the racktiles
-      var rackIdx = racktiles.indexOf(tileUi);
-      if (rackIdx > -1) {
-         // remove from there
-         racktiles[rackIdx] = null;
-      } else {
-         // remove it from the board
-         var boardR, boardC;
-         [boardR, boardC] = findTileOnBoard(tileUi)
-         if (boardR > -1 && boardC > -1) {
-            boardtiles[boardR][boardC] = null;
-         }
-      }
-   }
-
-   // 2. place the tiles again on the rack
-   for (var i=0; i<handTilesUi.length; ++i) {
-      var tileUi = handTilesUi[i];
-      var randomPos = Math.floor(Math.random() * 7);
-      setTileInRack(tileUi, randomPos);
-   }
-
-}
-
-function click_pass_button() {
-   if (state != ClientState.turn) {
-      return;
-   }
-   sock.send(JSON.stringify(["PASS", turnKey]));
-   state = ClientState.wait_turn_ack;
-}
-
-function click_play_button() {
-   turnPlayedTiles = [];
-
-   if (state != ClientState.turn) {
-      return;
-   }
-
-   var play = [ "PLAY", turnKey ];
-   for (var i=0; i<handTilesUi.length; ++i) {
-      var tileUi = handTilesUi[i];
-      var br, bc;
-      [br, bc] = findTileOnBoard(tileUi);
-      if (br > -1 && bc > -1) {
-         var letter = tileText(tileUi);
-         play.push([letter, br, bc]);
-         turnPlayedTiles.push([tileUi, br, bc]);
-      }
-   }
-
-   if (play.length == 2) {
-      return;
-   }
-
-   sock.send(JSON.stringify(play));
-   state = ClientState.wait_turn_ack;
-}
-
--->
-</script>
+<script type="text/javascript" src="/js/globals.js"></script>
+<script type="text/javascript" src="/js/ui.js"></script>
+<script type="text/javascript" src="/js/game.js"></script>
 
 </head>
 <body>
@@ -684,6 +112,9 @@ function click_play_button() {
 <tr><td align=center>
    <!-- board -->
    <table id="board" border=0 width="991px" height="991px"></table>
+
+   <br>
+   <br>
 
    <table border=0>
    <tr id="bottompanel">
@@ -727,75 +158,10 @@ function click_play_button() {
 
 <script>
 <!--
-var table = document.getElementById("board");
-
-var style = [
-   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "tw", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
-   [ "bl", "dw", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "dw", "bl" ],
-   [ "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl" ],
-   [ "dl", "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl", "dl" ],
-   [ "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl" ],
-   [ "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl" ],
-   [ "bl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "bl" ],
-   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "home", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
-   [ "bl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dl", "bl", "bl" ],
-   [ "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl" ],
-   [ "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl", "bl", "dw", "bl", "bl", "bl", "bl" ],
-   [ "dl", "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl", "dl" ],
-   [ "bl", "bl", "dw", "bl", "bl", "bl", "dl", "bl", "dl", "bl", "bl", "bl", "dw", "bl", "bl" ],
-   [ "bl", "dw", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "tl", "bl", "bl", "bl", "dw", "bl" ],
-   [ "tw", "bl", "bl", "dl", "bl", "bl", "bl", "tw", "bl", "bl", "bl", "dl", "bl", "bl", "tw" ],
-   ];
-
-var boardcells = []
-
-for (var r=0; r<15; r++) {
-   var row = table.insertRow(r);
-   var rowcells = []
-   
-   for (var c=0; c<15; c++) {
-      var cell = row.insertCell(c);
-      cell.setAttribute("class", style[r][c] + " noselect");
-      cell.style.width = boardcell.toString() + "px";
-      cell.style.height = boardcell.toString() + "px";
-
-      rowcells.push(cell);
-
-      if ( style[r][c] == "tw" ) {
-         var textnode = document.createTextNode("Triple Word Score");
-         cell.appendChild(textnode);
-      } else if ( style[r][c] == "dw" ) {
-         var textnode = document.createTextNode("Double Word Score");
-         cell.appendChild(textnode);
-      } else if ( style[r][c] == "tl" ) {
-         var textnode = document.createTextNode("Triple Letter Score");
-         cell.appendChild(textnode);
-      } else if ( style[r][c] == "dl" ) {
-         var textnode = document.createTextNode("Double Letter Score");
-         cell.appendChild(textnode);
-      }
-
-   }
-
-   boardcells.push(rowcells);
-}
-
-document.getElementById("shufbutton").disabled = true;
-document.getElementById("exchbutton").disabled = true;
-document.getElementById("passbutton").disabled = true;
-document.getElementById("playbutton").disabled = true;
-
-var tilerackEle = document.getElementById("tilerack");
-var tilerackrowEle = tilerackEle.insertRow(0);
-
-for (var i=0; i<7; i++) {
-   var cell = tilerackrowEle.insertCell(i);
-   cell.setAttribute("class", "tileblank noselect");
-   cell.id = rackposName(i);
-   cell.style.width = tilewidth.toString() + "px";
-   cell.style.height = tilewidth.toString() + "px";
-   rackspotEles.push(cell);
-}
+setupBoard();
+setupRack();
+buttonsDisabled(true);
+-->
 </script>
 
 <script>
@@ -814,7 +180,7 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-var sock = new WebSocket("ws://sharadb.net:5051/");
+var sock = new WebSocket("ws://sharadb.net:5053/");
 //var sock = new WebSocket("ws://192.168.1.221:5052/");
 sock.onopen = function (event) {
    console.log("connected to server");
@@ -916,42 +282,6 @@ sock.onmessage = function (event) {
    }
 
 }
-
-
-function show_connect_panel() {
-   document.getElementById("connectpanel").style.display = "table";
-}
-
-function hide_connect_panel() {
-   document.getElementById("connectpanel").style.display = "none";
-}
-
-function connect_as_viewer() {
-   sock.send(JSON.stringify( [ "VIEW" ] ));
-   hide_connect_panel();
-   state = ClientState.wait_viewer_ack;
-}
-
-function connect_as_player() {
-   var name = document.getElementById("name").value;
-   var passwd = document.getElementById("password").value;
-
-   if (name == "") {
-      alert("username missing");
-      return;
-   }
-   if (passwd == "") {
-      alert("password missing");
-      return;
-   }
-   myName = name;
-   sock.send(JSON.stringify( [ "JOIN", name, passwd ] ));
-
-   hide_connect_panel();
-   state = ClientState.wait_join_ack;
-}
-
-
 -->
 </script>
 
