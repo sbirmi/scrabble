@@ -114,7 +114,49 @@ function coordsInRect(x, y, rect) {
            y >= rect.top && y <= rect.bottom);
 }
 
+function removeTileFromBoard(ele) {
+   var prevR, prevC;
+   [prevR, prevC] = findTileOnBoard(ele);
+   if (prevR > -1 && prevC > -1) {
+      boardtiles[prevR][prevC] = null;
+   }
+}
+
+function removeTileFromRack(ele) {
+   prevIdx = racktiles.indexOf(ele);
+   if (prevIdx > -1) {
+      racktiles[prevIdx] = null;
+   }
+}
+
+function removeTileFromExchArea(ele) {
+   var exchIdx = exchangetiles.indexOf(ele);
+   if (exchIdx > -1) {
+      exchangetiles.splice(exchIdx, 1);
+   }
+}
+
 function dropOn(ele, x, y) {
+   // See if we are dropping the tile in the exchange area
+   var exchAreaUi = document.getElementById("exchangeArea");
+   var exchAreaRect = exchAreaUi.getBoundingClientRect();
+   if (coordsInRect(x, y, exchAreaRect)) {
+      // If tile is coming from the board, remove it from there
+      removeTileFromBoard(dragObj);
+
+      // If tile is from the rack, remove it from there
+      removeTileFromRack(dragObj);
+
+      // Add it to exchange
+      if (exchangetiles.indexOf(ele) == -1) {
+         // The tile wasn't in the exchange area so
+         // needs to be added there
+         exchangetiles.push(ele);
+      }
+      return true;
+   }
+
+
    // See if we are dropping the tile on the rack
    var rackEle = document.getElementById("tilerack");
    var rackEleRect = rackEle.getBoundingClientRect();
@@ -122,12 +164,10 @@ function dropOn(ele, x, y) {
       for (var i=0; i < rackspotEles.length; i++) {
          if (coordsInRect(x, y,rackspotEles[i].getBoundingClientRect())) {
             console.log("Dropping tile at rack spot " + i);
+            removeTileFromBoard(dragObj);
+            removeTileFromExchArea(dragObj);
+
             setTileInRack(dragObj, i);
-            var prevR, prevC;
-            [prevR, prevC] = findTileOnBoard(dragObj);
-            if (prevR > -1 && prevC > -1) {
-               boardtiles[prevR][prevC] = null;
-            }
             return true;
          }
       }
@@ -143,10 +183,8 @@ function dropOn(ele, x, y) {
             console.log("dropped '" + tileText(dragObj) + "' on board at " + r + "," + c);
             success = setTileOnBoard(dragObj, r, c);
             if (success) {
-               prevIdx = racktiles.indexOf(ele);
-               if ( prevIdx > -1 ) {
-                  racktiles[prevIdx] = null;
-               }
+               removeTileFromExchArea(ele);
+               removeTileFromRack(ele);
             }
             return success;
          }
@@ -332,19 +370,9 @@ function click_shuf_tiles() {
    for (var i=0; i<handTilesUi.length; ++i) {
       var tileUi = handTilesUi[i];
 
-      // tileUi on the racktiles
-      var rackIdx = racktiles.indexOf(tileUi);
-      if (rackIdx > -1) {
-         // remove from there
-         racktiles[rackIdx] = null;
-      } else {
-         // remove it from the board
-         var boardR, boardC;
-         [boardR, boardC] = findTileOnBoard(tileUi)
-         if (boardR > -1 && boardC > -1) {
-            boardtiles[boardR][boardC] = null;
-         }
-      }
+      removeTileFromRack(tileUi);
+      removeTileFromExchArea(tileUi);
+      removeTileFromBoard(tileUi);
    }
 
    // 2. place the tiles again on the rack
@@ -428,8 +456,9 @@ function setupBoard() {
          cell_design.style.position = "absolute";
          cell_design.zIndex = 1;
          cell_design.style.width = boardcell_size.toString() + "px";
-         cell_design.style.height = boardcell_size.toString() + "px";
+         cell_design.style.height = (boardcell_size - 8).toString() + "px";
          cell_design.setAttribute("class", style[r][c] + " noselect");
+         cell_design.style.paddingTop = "8px";
          holder_div.appendChild(cell_design);
 
          if (style[r][c] == "tw") {

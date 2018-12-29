@@ -8,6 +8,17 @@ body {
    background: steelblue;
 }
 
+.excharea {
+   border-radius: 5px;
+   border: 2px white dashed;
+   width: 252px;
+   height: 126px;
+   padding-top: 10px;
+   text-align: center;
+   color: white;
+   font: 2em "Open Sans", sans-serif;
+}
+
 .tilescore {
    position: relative;
    transform: translate(-5%, -105%);
@@ -22,6 +33,9 @@ body {
    background: #e6b988;
    border-radius: 3px;
    z-index: 10;
+   -moz-box-shadow:    1px 1px 1px 1px #666;
+   -webkit-box-shadow: 1px 1px 1px 1px #666;
+   box-shadow: 1px 1px 1px 1px #666;
 }
 
 .tiletext {
@@ -119,6 +133,12 @@ body {
    <table border=0>
    <tr id="bottompanel">
       <td>
+         <div id="exchangeArea" class="excharea">
+            Exchange<br/>
+            Tiles
+         </div>
+      </td>
+      <td>
          <!-- tile rack -->
          <table id="tilerack" border=0 align=center></table>
          <!-- buttons -->
@@ -180,7 +200,7 @@ var ClientState = Object.freeze({
    
 var state = ClientState.start;
 
-var sock = new WebSocket("ws://sharadb.net:5053/");
+var sock = new WebSocket("ws://sharadb.net:5052/");
 //var sock = new WebSocket("ws://192.168.1.221:5052/");
 sock.onopen = function (event) {
    console.log("connected to server");

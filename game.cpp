@@ -184,7 +184,7 @@ Inst::get_others_turn_message() {
 }
 
 bool
-Inst::touches_old_tile(unsigned int r, unsigned int c) {
+Inst::touches_old_tile(int r, int c) {
    if (r-1 >= 0 && boardRC[r-1][c] != ' ') { return true; }
    if (r+1 < 15 && boardRC[r+1][c] != ' ') { return true; }
    if (c-1 >= 0 && boardRC[r][c-1] != ' ') { return true; }

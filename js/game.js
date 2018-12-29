@@ -28,9 +28,8 @@ function processPlayOkayMessage(msg) {
 
          if (handLetter == letterToRemove) {
             console.log("tile is also in the rack " + racktiles.indexOf(tile));
-            if (racktiles.indexOf(tile) > -1) {
-               racktiles[racktiles.indexOf(tile)] = null;
-            }
+            removeTileFromRack(tile);
+            removeTileFromExchArea(tile);
             tile.remove()
             handTilesUi.splice(i, 1);
             break;

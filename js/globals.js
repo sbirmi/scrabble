@@ -4,16 +4,22 @@ var tilewidth = 63;
 
 var playerScoreList = [];
 
+
+// Tiles in hand. They maybe on the rack, on the
+// board, or sitting in the exchange area.
+var handTilesUi = [];
+
+// List of all tiles on the board
 var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
+// List of all tiles on the rack
 var racktiles = [ null, null, null, null, null, null, null ];
-//var frozentiles = [];
+// List of tiles in the exchange area
+var exchangetiles = []
+
+
 var rackspotEles = [];
 
 var dragObj = null;
-
-// Tiles in hand. They maybe on the rack
-// or on the board
-var handTilesUi = [];
 
 var letterscore = {
    "A": 1, "B": 3, "C": 3, "D": 2, "E": 1,
