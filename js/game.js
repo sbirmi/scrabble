@@ -7,6 +7,30 @@ function processGameOverMessage(msg) {
    sock.close();
 }
 
+function processExchOkayMessage(msg) {
+   // move all the tiles back to the rack
+   click_shuf_tiles();
+
+   // Remove the letter from rack if present there.
+   // tile.remove() is sufficient for tiles on the
+   // board.
+   for (var lidx=0; lidx<msg[1].length; ++lidx) {
+      var letterToRemove = upperLetterOrBlank(msg[1][lidx]);
+      for (var i=0; i<handTilesUi.length; ++i) {
+         var tile = handTilesUi[i];
+         var handLetter = upperLetterOrBlank(tileText(tile));
+
+         if (handLetter == letterToRemove) {
+            console.log("tile is also in the rack " + racktiles.indexOf(tile));
+            removeTileFromRack(tile);
+            tile.remove()
+            handTilesUi.splice(i, 1);
+            break;
+         }
+      }
+   }
+}
+
 function processPlayOkayMessage(msg) {
    console.log("processPlayOkayMessage"); // TODO
    console.log(handTilesUi); // TODO

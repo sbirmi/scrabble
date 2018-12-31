@@ -196,22 +196,42 @@ Inst::touches_old_tile(int r, int c) {
 //
 // Game event handling
 //
+void
+Inst::shuffle_bag() {
+   random_shuffle(tiles.begin(), tiles.end());
+}
+
 bool
 Inst::is_new_tile(unsigned int r, unsigned int c) const {
    return (boardRC[r][c] == ' ' && tempBoardRC[r][c] != ' ');
 }
 
 void
-Inst::next_turn(HandleResponseList &hrl) {
-   // Check if the current player finished playing
-   // all the tiles
-   if (players[turnIndex]->hand == "") {
+Inst::next_turn(HandleResponseList &hrl, bool pass) {
+   if (pass) {
+      ++passesMade;
+   } else {
+      passesMade = 0;
+   }
+
+   // Check if the number of passes equals N + 1, i.e.,
+   // the same player as has passed twice or if the
+   // current player finished playing all the tiles
+   if (players[turnIndex]->hand == "" ||
+       passesMade == maxPlayers + 1) {
+
+      bool exhaustedTiles = players[turnIndex]->hand == "";
+
       gameOver = true;
       for (const auto& pl : players) {
          pl->state = game_over;
       }
 
-      std::cout << players[turnIndex]->name << " is out of tiles" << std::endl;
+      if (exhaustedTiles) {
+         std::cout << players[turnIndex]->name << " is out of tiles" << std::endl;
+      } else {
+         std::cout << players[turnIndex]->name << " has passed twice" << std::endl;
+      }
 
       // Subtracts points from all other players' hand
       // and add it to us
@@ -225,7 +245,10 @@ Inst::next_turn(HandleResponseList &hrl) {
                    << " is left with '" << pl->hand << "'. Subtracting "
                    << this_player_score << std::endl;
          pl->score -= this_player_score;
-         players[turnIndex]->score += this_player_score;
+
+         if (exhaustedTiles) {
+            players[turnIndex]->score += this_player_score;
+         }
       }
       broadcast_score_messages(hrl);
       broadcast_json_message(hrl, jsonify("GAME-OVER"));
@@ -412,7 +435,7 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 
    // if this is the first move, one of the tiles must
    // be at the center of the board
-   if (movesMade == 0) {
+   if (wordsMade == 0) {
       bool boardCenterOccupied = false;
       for (const auto& pm : play) {
          if (pm.row == 7 && pm.col == 7) {
@@ -435,7 +458,7 @@ Inst::play_score(const std::vector<PlayMove>& play) {
    }
   
    // check that new tiles touch at least an old tile
-   if (movesMade > 0) {
+   if (wordsMade > 0) {
       bool connects = false;
 
       for (const auto& pm : play) {
@@ -539,7 +562,7 @@ Inst::start_game(HandleResponseList &hrl) {
       issue_tiles(plIdx, hrl);
    }
 
-   next_turn(hrl);
+   next_turn(hrl, false);
 }
 
 std::string
@@ -561,6 +584,49 @@ Inst::issue_tiles(unsigned int plIdx, HandleResponseList& hrl) {
    }
 
    return racktiles;
+}
+
+bool
+Inst::exchange_tiles(std::string _removed,
+                     const Handle& hdl,
+                     HandleResponseList& hrl) {
+   std::string removed = _removed;
+   for (unsigned int i=0; i<removed.length(); ++i) {
+      if (islower(removed[i])) {
+         removed[i] = ' ';
+      }
+   }
+
+   // build what the hand would look like with the tiles removed
+   std::string handtiles = players[turnIndex]->hand;
+   for (auto const& letter : removed) {
+      size_t idx = handtiles.find(letter);
+
+      if (idx == std::string::npos) {
+         // playing a character that's not in the hand
+         std::cerr << __FUNCTION__ << " playing a tile that's not in player's hand" << std::endl;
+         hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "playing a tile not in hand")));
+         return false;
+      }
+
+      handtiles.erase(idx, 1);
+   }
+
+   // remove letters from hand
+   players[turnIndex]->hand = handtiles;
+   for (auto const& hdlClient : players[turnIndex]->clients) {
+      hrl.push_back(generateResponse(hdlClient.first,
+                                     jsonify("EXCH-OKAY", _removed)));
+   }
+
+   // issue new tiles
+   issue_tiles(turnIndex, hrl);
+
+   // add removed tiles to the bag
+   tiles += removed;
+   shuffle_bag();
+
+   return true;
 }
 
 void
@@ -774,7 +840,56 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value &json) {
 
    // Player turnIndex wants to pass
    hrl.push_back(generateResponse(hdl, jsonify("PASS-OKAY")));
-   next_turn(hrl); 
+   next_turn(hrl, true); 
+   return hrl;
+}
+
+HandleResponseList
+Inst::process_cmd_exch(const Handle& hdl, const Json::Value &cmdJson) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+   HandleResponseList hrl;
+
+   // parse message for correctness
+   if (cmdJson.size() != 3 || !cmdJson[1].isString() || !cmdJson[2].isString()) {
+      std::cerr << "message error: length or all arguments being strings" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "message format")));
+      return hrl;
+   }
+
+   if (cmdJson[2].asString().length() == 0 || cmdJson[2].asString().length() > 7) {
+      std::cerr << "message error: incorrect number of letters" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "incorrect number of letters")));
+      return hrl;
+   }
+
+   if (handleMode[hdl] != (int)turnIndex) {
+      std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "out of turn")));
+      return hrl;
+   }
+
+   if (cmdJson[1].asString() != players[turnIndex]->turnkey) {
+      std::cerr << "out of turn: turnkey mismatch" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "bad turnkey")));
+      return hrl;
+   }
+
+   if (tiles.length() < 7) {
+      std::cerr << "too few letters in bag to exchange tiles. count=" << tiles.length() << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "too few tiles")));
+      return hrl;
+   }
+
+   // TODO check that provided letters are a-zA-Z or a blank tile
+
+   // TODO move hdl check from exchange_tiles to here
+
+   // All checks passed. Go ahead and replace the tiles
+   bool success = exchange_tiles(cmdJson[2].asString(), hdl, hrl);
+   if (success) {
+      next_turn(hrl, false);
+   }
+
    return hrl;
 }
 
@@ -811,6 +926,8 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
       return hrl;
    }
 
+   // TODO check that provided letters are a-zA-Z
+
    std::vector<PlayMove> play;
    std::string word_played;
    for (unsigned int i=2; i<cmdJson.size(); ++i) {
@@ -828,7 +945,7 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
       return hrl;
    }
 
-   ++movesMade;
+   ++wordsMade;
 
    // Player turnIndex wants to pass
    for (const auto& hdlClient : players[turnIndex]->clients) {
@@ -852,7 +969,7 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    players[turnIndex]->score += score;
    broadcast_score_messages(hrl);
 
-   next_turn(hrl); 
+   next_turn(hrl, false); 
    return hrl;
 }
 
@@ -869,6 +986,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
       return process_cmd_join(hdl, json);
    } else if (cmd == "PASS") {
       return process_cmd_pass(hdl, json);
+   } else if (cmd == "EXCH") {
+      return process_cmd_exch(hdl, json);
    } else if (cmd == "PLAY") {
       return process_cmd_play(hdl, json);
    }
@@ -881,20 +1000,21 @@ Inst::Inst(unsigned int _gid, const WordList *_wl) :
       wl(_wl),
       maxPlayers(2),
       gameOver(false),
-      movesMade(0),
+      wordsMade(0),
+      passesMade(0),
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
+   srand(time(NULL));
    std::mt19937 rng;
    rng.seed(std::random_device()());
 
    tiles = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ  ";
    assert(tiles.length() == 100);
+   shuffle_bag();
 
    std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
    turnIndex = dist6(rng);
    std::cout << "turnIndex = " << turnIndex << std::endl;
-   srand(time(NULL));
-   random_shuffle(tiles.begin(), tiles.end());
 
    for (unsigned int r=0; r<15; ++r) {
       for (unsigned int c=0; c<15; ++c) {

@@ -385,6 +385,25 @@ function click_shuf_tiles() {
    console.log("shuf_tiles end handTilesUi.length = " + handTilesUi.length);
 }
 
+function click_exch_button() {
+   if (state != ClientState.turn) {
+      return;
+   }
+
+   if (exchangetiles.length == 0) {
+      return ;
+   }
+
+   var exch = [ "EXCH", turnKey, "" ];
+   for (var i=0; i<exchangetiles.length; ++i) {
+      var tileUi = exchangetiles[i];
+      exch[2] += tileText(tileUi);
+   }
+
+   sock.send(JSON.stringify(exch));
+   state = ClientState.wait_turn_ack;
+}
+
 function click_pass_button() {
    if (state != ClientState.turn) {
       return;

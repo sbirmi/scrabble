@@ -133,7 +133,7 @@ body {
    <table border=0>
    <tr id="bottompanel">
       <td>
-         <div id="exchangeArea" class="excharea">
+         <div id="exchangeArea" class="excharea noselect">
             Exchange<br/>
             Tiles
          </div>
@@ -148,7 +148,7 @@ body {
                <input type=button id="shufbutton" class="button" value="SHUF" disabled=True onclick="click_shuf_tiles();">
             </td>
             <td>
-               <input type=button id="exchbutton" class="button" value="EXCH" disabled=True>
+               <input type=button id="exchbutton" class="button" value="EXCH" disabled=True onclick="click_exch_button();">
             </td>
             <td>
                <input type=button id="passbutton" class="button" value="PASS" disabled=True onclick="click_pass_button();">
@@ -186,19 +186,6 @@ buttonsDisabled(true);
 
 <script>
 // WEB-SOCKET
-
-var ClientState = Object.freeze({
-   "start": 0,
-   "wait_viewer_ack": 1,
-   "viewer": 2,
-   "wait_join_ack": 3,
-   "wait_game_start": 4,
-   "turn": 5,
-   "wait_turn_ack":6,
-   "wait_turn": 7,
-   "game_over": 8});
-   
-var state = ClientState.start;
 
 var sock = new WebSocket("ws://sharadb.net:5052/");
 //var sock = new WebSocket("ws://192.168.1.221:5052/");
@@ -256,9 +243,13 @@ sock.onmessage = function (event) {
    } else if (state == ClientState.wait_turn_ack) {
       // just made a move and waitnig for confirmation
 
-      if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD") {
+      if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD" || msg[0] == "EXCH-BAD") {
          state = ClientState.turn;
          click_shuf_tiles();
+         return;
+      } else if (msg[0] == "EXCH-OKAY") {
+         state = ClientState.wait_turn;
+         processExchOkayMessage(msg);
          return;
       } else if (msg[0] == "PLAY-OKAY") {
          state = ClientState.wait_turn;

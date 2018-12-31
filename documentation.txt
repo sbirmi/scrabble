@@ -17,7 +17,7 @@ CLIENT -> SERVER:
       [ "VIEW-BAD", <reason> ]
 
 SERVER -> CLIENT:
-   [ "RACKTILES", "ABC" ]
+   [ "RACKTILES", <letters> ]
 
 SERVER -> CLIENT:
    [ "BOARDTILES", [ "P", x, y ], [ "Q", x, y ], ]
@@ -39,7 +39,7 @@ SERVER -> CLIENT:
       [ "PLAY", <turn-key>, [ "A", r, c ], [ "b", r, c ], ]
 
       SERVER -> CLIENT:
-         [ "PLAY-OKAY", "letters" ]     // TODO (tell all clients for player to delete keys)
+         [ "PLAY-OKAY", <letters> ]     // TODO (tell all clients for player to delete keys)
          [ "PLAY-BAD", <reason> ]
             - out of turn
             - bad turnkey
@@ -47,11 +47,11 @@ SERVER -> CLIENT:
             - bad move
 
    CLIENT -> SERVER:
-      [ "EXCH", <turn-key>, "A", "B" ]
+      [ "EXCH", <turn-key>, <letters> ]
 
       SERVER -> CLIENT:
-         [ "EXCH-OKAY", <turn-key> ]
-         [ "EXCH-BAD", <turn-key>, <reason> ]
+         [ "EXCH-OKAY", "letters" ]
+         [ "EXCH-BAD", <reason> ]
             - such as out of turn
 
 SERVER -> CLIENT:

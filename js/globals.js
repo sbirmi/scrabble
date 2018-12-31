@@ -40,3 +40,17 @@ var letterscore = {
 // For the game protocol
 var myName = "";
 var turnKey = "";
+
+// Client state
+var ClientState = Object.freeze({
+   "start": 0,
+   "wait_viewer_ack": 1,
+   "viewer": 2,
+   "wait_join_ack": 3,
+   "wait_game_start": 4,
+   "turn": 5,
+   "wait_turn_ack":6,
+   "wait_turn": 7,
+   "game_over": 8});
+   
+var state = ClientState.start;

@@ -123,7 +123,8 @@ private:
    unsigned int tempBoardScoreRC[15][15] = {0};
    char boardRC[15][15];
    char tempBoardRC[15][15];
-   unsigned int movesMade;
+   unsigned int wordsMade;
+   unsigned int passesMade;
 
    Json::Reader *jsonReader;
    Json::FastWriter *jsonWriter;
@@ -138,16 +139,21 @@ private:
    bool touches_old_tile(int r, int c);
 
    // Game event handling
+   void shuffle_bag();
    bool is_new_tile(unsigned int r,
                     unsigned int c) const;
    void start_game(HandleResponseList &hrl);
-   void next_turn(HandleResponseList &hrl);
+   // pass indicates if the last move was a pass
+   void next_turn(HandleResponseList &hrl, bool pass);
    int play_word_score(const PlayMove &,
                        bool wordAlongRow);
    // returns negative value if invalid word
    int play_score(const std::vector<PlayMove>&);
    std::string issue_tiles(unsigned int plIdx,
                            HandleResponseList& hrl);
+   bool exchange_tiles(std::string,
+                       const Handle& hdl, 
+                       HandleResponseList&);
 
    // Dump game state
    void dump_game_state(const Handle& hdl, HandleResponseList &hrl);
@@ -169,6 +175,9 @@ private:
          const Handle& hdl,
          const Json::Value &cmdJson);
    HandleResponseList process_cmd_pass(
+         const Handle& hdl,
+         const Json::Value &cmdJson);
+   HandleResponseList process_cmd_exch(
          const Handle& hdl,
          const Json::Value &cmdJson);
    HandleResponseList process_cmd_play(
