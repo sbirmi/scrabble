@@ -1,4 +1,5 @@
 // For UI
+var game_server_port = 5052;
 var boardcell_size = 65;
 var tilewidth = 63;
 
@@ -62,6 +63,7 @@ var ConnectState = Object.freeze({
 
 var connect_state = null;
 var state = ClientState.start;
-var sock_url = "ws://sharadb.net:5051/";
+var domain = window.location.host.split(":")[0];
+var sock_url = "ws://" + domain + ":" + game_server_port + "/";
 
 var sock = null;
