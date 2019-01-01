@@ -52,5 +52,16 @@ var ClientState = Object.freeze({
    "wait_turn_ack":6,
    "wait_turn": 7,
    "game_over": 8});
-   
+
+var ConnectState = Object.freeze({
+   "disconnected": 0,
+   "connect_as_player": 1,
+   "connect_as_viewer": 2,
+   "connected": 3,
+});
+
+var connect_state = null;
 var state = ClientState.start;
+var sock_url = "ws://sharadb.net:5051/";
+
+var sock = null;

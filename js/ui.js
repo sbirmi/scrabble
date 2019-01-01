@@ -8,9 +8,8 @@ function showPlayerScore(plIdx, score) {
 }
 
 function showStatus(txt) {
-   if (true) { return; }
    var el = document.getElementById("status");
-   el.innerHTML = txt + "<br>" + el.innerHTML;
+   el.innerHTML = txt;
 }
 
 function findTileOnBoard(ele) {
@@ -284,12 +283,6 @@ function dragElement(ele) {
    var deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
    var startTop = 0, startLeft = 0;
 
-   // TODO REMOVE THIS   
-//   // if this is a frozen tile, dragging isn't allowed
-//   if (frozentiles.indexOf(ele) > -1) {
-//      return;
-//   }
-
    ele.onmousedown = dragMouseDown;
    ele.addEventListener("touchstart", dragMouseDown, false);
    ele.addEventListener("touchmove", elementDrag, false);
@@ -302,7 +295,6 @@ function dragElement(ele) {
          lastX = e.clientX;
          lastY = e.clientY;
       } else if (e instanceof TouchEvent) {
-         showStatus("touch event");
          if (e.changedTouches.length > 0) {
             var touch = e.changedTouches[0]
             lastX = touch.pageX;
@@ -316,7 +308,6 @@ function dragElement(ele) {
       dragObj = e.target.parentElement;
       startTop = dragObj.style.top;
       startLeft = dragObj.style.left;
-      showStatus( "startLeft,startTop=" + startLeft + "," + startTop );
       e.preventDefault();
       document.onmouseup = closeDragElement;
       document.onmousemove = elementDrag;
@@ -351,7 +342,6 @@ function dragElement(ele) {
          }
       }
 
-      showStatus("stopped dragging. dropped at " + stopX + " " + stopY);
       var success = dropOn(dragObj, stopX, stopY);
       if (!success) {
          dragObj.style.top = startTop;
@@ -515,10 +505,83 @@ function buttonsDisabled(state) {
    document.getElementById("playbutton").disabled = state;
 }
 
+function join_view_buttons_disabled(disabled) {
+   document.getElementById("but_join").disabled = disabled;
+   document.getElementById("but_view").disabled = disabled;
+}
+
 function show_connect_panel() {
    document.getElementById("connectpanel").style.display = "table";
 }
 
 function hide_connect_panel() {
    document.getElementById("connectpanel").style.display = "none";
+}
+
+function connectStateTxn(state) {
+   if (state == ConnectState.disconnected) {
+      clearBoardAndRack();
+      resetSock();
+      show_connect_panel();
+      showStatus("disconnected");
+      join_view_buttons_disabled(false);
+      buttonsDisabled(true);
+
+      connect_state = state;
+
+   } else if (state == ConnectState.connect_as_viewer) {
+      show_connect_panel();
+      showStatus("connecting");
+      join_view_buttons_disabled(true);
+      buttonsDisabled(true);
+
+      sock = new WebSocket(sock_url);
+      sock.onclose = sock_onclose;
+      sock.onerror = sock_onerror;
+      sock.onmessage = sock_onmessage;
+      sock.onopen = function (event) {
+         console.log(event);
+         connect_as_viewer();
+      }
+
+      connect_state = state;
+
+   } else if (state == ConnectState.connect_as_player) {
+
+      var name = document.getElementById("name").value;
+      var passwd = document.getElementById("password").value;
+
+      if (name == "") {
+         showStatus("disconnected: PlayerName missing");
+         resetSock();
+         return;
+      }
+      if (passwd == "") {
+         showStatus("disconnected: SecretKey missing");
+         resetSock();
+         return;
+      }
+      myName = name;
+
+      show_connect_panel();
+      showStatus("connecting");
+      join_view_buttons_disabled(true);
+      buttonsDisabled(true);
+
+      sock = new WebSocket(sock_url);
+      sock.onclose = sock_onclose;
+      sock.onerror = sock_onerror;
+      sock.onmessage = sock_onmessage;
+      sock.onopen = function (event) {
+         console.log(event);
+         connect_as_player();
+      }
+
+      connect_state = state;
+
+   } else if (state == ConnectState.connected) {
+      hide_connect_panel();
+      join_view_buttons_disabled(true);
+      connect_state = state;
+   }
 }

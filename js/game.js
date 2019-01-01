@@ -157,27 +157,163 @@ function processBoardTilesMessage(msg) {
    }
 }
 
+function clearBoardAndRack() {
+   while (handTilesUi.length > 0) {
+      var tileUi = handTilesUi[handTilesUi.length - 1];
+      removeTileFromBoard(tileUi);
+      removeTileFromRack(tileUi);
+      removeTileFromExchArea(tileUi);
+      tileUi.remove();
+      handTilesUi.splice(handTilesUi.length - 1, 1);
+   }
+
+   for (var r=0; r<15; ++r) {
+      for (var c=0; c<15; ++c) {
+         if (boardtiles[r][c]) {
+            boardtiles[r][c].remove();
+            boardtiles[r][c] = null;
+         }
+      }
+   }
+
+   turnKey = "";
+   myName = "";
+
+   // remove player score and separators
+   for (var i=0; i<playerScoreList.length*2; ++i) {
+      var bottompanel = document.getElementById("bottompanel");
+      bottompanel.children[bottompanel.children.length-1].remove();
+   }
+
+   playerScoreList = [];
+}
+
+// Socket event handling
+function sock_onerror(event) {
+   console.log(event);
+   connectStateTxn(ConnectState.disconnected);
+}
+
+function sock_onclose(event) {
+   console.log(event);
+   connectStateTxn(ConnectState.disconnected);
+   showStatus("disconnect: connect error");
+}
+
+function sock_onmessage(event) {
+   var msg = JSON.parse(event.data);
+   console.log("Client state=" + state + " msg=" + msg);
+
+   if (state == ClientState.start) {
+      // ignore all messages
+      return;
+
+   } else if (state == ClientState.wait_viewer_ack) {
+      // viewer mode
+      if (msg[0] == "VIEW-OKAY") {
+         state = ClientState.viewer;
+         connectStateTxn(ConnectState.connected);
+         return;
+      } else if (msg[0] == "VIEW-BAD") {
+         alert(msg[1]);
+         state = ClientState.start;
+         connectStateTxn(ConnectState.disconnected);
+         return;
+      } else {
+         // ignore all other messages
+      }
+      return;
+
+   } else if (state == ClientState.wait_join_ack) {
+      // connecting as player
+      if (msg[0] == "JOIN-OKAY") {
+         state = ClientState.wait_game_start;
+         connectStateTxn(ConnectState.connected);
+         return;
+      } else if (msg[0] == "JOIN-BAD") {
+         state = ClientState.start;
+         connectStateTxn(ConnectState.disconnected);
+         return;
+      } else {
+         // ignore all other messages
+      }
+      return;
+
+   } else if (state == ClientState.wait_game_start) {
+      if (msg[0] == "RACKTILES") {
+         processRackTilesMessage(msg);
+         return;
+      }
+
+   } else if (state == ClientState.wait_turn_ack) {
+      // just made a move and waitnig for confirmation
+
+      if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD" || msg[0] == "EXCH-BAD") {
+         state = ClientState.turn;
+         click_shuf_tiles();
+         return;
+      } else if (msg[0] == "EXCH-OKAY") {
+         state = ClientState.wait_turn;
+         processExchOkayMessage(msg);
+         return;
+      } else if (msg[0] == "PLAY-OKAY") {
+         state = ClientState.wait_turn;
+         processPlayOkayMessage(msg);
+         return;
+      } else if (msg[0] == "PASS-OKAY") {
+         state = ClientState.wait_turn;
+         return;
+      }
+
+   }
+
+   // Commands that work in several state
+   if (msg[0] == "GAME-OVER") {
+      processGameOverMessage(msg);
+
+   } else if (msg[0] == "SCORE") {
+      processScoreMessage(msg);
+
+      for (var i=0; i<playerScoreList.length; i++) {
+         showPlayerScore(i, playerScoreList[i][1]);
+      }
+
+   } else if (msg[0] == "TURN") {
+      processTurnMessage(msg);
+
+   } else if (msg[0] == "BOARDTILES") {
+      processBoardTilesMessage(msg);
+
+   } else if (msg[0] == "RACKTILES") {
+      processRackTilesMessage(msg);
+
+   } else if (msg[0] == "PLAY-OKAY") {
+      state = ClientState.wait_turn;
+      processPlayOkayMessage(msg);
+
+   } else if (msg[0] == "PASS-OKAY") {
+      state = ClientState.wait_turn;
+      return;
+
+   }
+}
+
 function connect_as_viewer() {
    sock.send(JSON.stringify( [ "VIEW" ] ));
-   hide_connect_panel();
    state = ClientState.wait_viewer_ack;
 }
+
 
 function connect_as_player() {
    var name = document.getElementById("name").value;
    var passwd = document.getElementById("password").value;
-
-   if (name == "") {
-      alert("username missing");
-      return;
-   }
-   if (passwd == "") {
-      alert("password missing");
-      return;
-   }
-   myName = name;
    sock.send(JSON.stringify( [ "JOIN", name, passwd ] ));
-
-   hide_connect_panel();
    state = ClientState.wait_join_ack;
+}
+
+function resetSock() {
+   if (sock) {
+      sock.close();
+   }
+   sock = null;
 }

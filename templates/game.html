@@ -6,6 +6,27 @@
 <!--
 body {
    background: steelblue;
+   margin: 0px;
+}
+
+.connectpanel {
+   background: orange;
+   width: 100%;
+}
+
+.connecttext {
+   font: 1.5em "Open Sans", sans-serif;
+   border-radius: 10px;
+   width: 200px;
+}
+
+.connectbutton {
+   font: 1.5em "Open Sans", sans-serif;
+}
+
+.status {
+   font: 1.5em "Open Sans", sans-serif;
+   text-align: right;
 }
 
 .excharea {
@@ -122,6 +143,21 @@ body {
 </head>
 <body>
 
+<table border=0 id=connectpanel class=connectpanel>
+<tr>
+   <td>
+      <input id=name class=connecttext placeholder="PlayerName">
+      <input id=password class=connecttext placeholder="SecretKey">
+      <input id=but_join type=button class=connectbutton value="JOIN" onclick="connectStateTxn(ConnectState.connect_as_player);">
+      <input id=but_view type=button class=connectbutton value="VIEW" onclick="connectStateTxn(ConnectState.connect_as_viewer);">
+   </td>
+   <td>
+      <div id="status" class="status"></div>
+   </td>
+</tr>
+</table>
+
+
 <table border=0 width=100%>
 <tr><td align=center>
    <!-- board -->
@@ -165,138 +201,13 @@ body {
 </td></tr>
 </table>
 
-<table id=connectpanel>
-   <tr>
-      <td><input type=button value="Connect as viewer" onclick="connect_as_viewer();"></td>
-      <td>
-         <input id=name size=8>
-         <input id=password size=8>
-         <input type=button value="Join" onclick="connect_as_player();">
-      </td>
-   </tr>
-</table>
-
 <script>
 <!--
 setupBoard();
 setupRack();
-buttonsDisabled(true);
+connectStateTxn(ConnectState.disconnected);
 -->
 </script>
-
-<script>
-// WEB-SOCKET
-
-var sock = new WebSocket("ws://sharadb.net:5052/");
-//var sock = new WebSocket("ws://192.168.1.221:5052/");
-sock.onopen = function (event) {
-   console.log("connected to server");
-   console.log(event);
-}
-sock.onerror = function (event) {
-   console.log("error");
-   console.log(event);
-}
-sock.onmessage = function (event) {
-   var msg = JSON.parse(event.data);
-   console.log("Client state=" + state + " msg=" + msg);
-
-   if (state == ClientState.start) {
-      // ignore all messages
-      return;
-
-   } else if (state == ClientState.wait_viewer_ack) {
-      // viewer mode
-      if (msg[0] == "VIEW-OKAY") {
-         state = ClientState.viewer;
-         return;
-      } else if (msg[0] == "VIEW-BAD") {
-         alert(msg[1]);
-         state = ClientState.start;
-         show_connect_panel();
-         return;
-      } else {
-         // ignore all other messages
-      }
-      return;
-
-   } else if (state == ClientState.wait_join_ack) {
-      // connecting as player
-      if (msg[0] == "JOIN-OKAY") {
-         state = ClientState.wait_game_start;
-         return;
-      } else if (msg[0] == "JOIN-BAD") {
-         state = ClientState.start;
-         show_connect_panel();
-         return;
-      } else {
-         // ignore all other messages
-      }
-      return;
-
-   } else if (state == ClientState.wait_game_start) {
-      if (msg[0] == "RACKTILES") {
-         processRackTilesMessage(msg);
-         return;
-      }
-
-   } else if (state == ClientState.wait_turn_ack) {
-      // just made a move and waitnig for confirmation
-
-      if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD" || msg[0] == "EXCH-BAD") {
-         state = ClientState.turn;
-         click_shuf_tiles();
-         return;
-      } else if (msg[0] == "EXCH-OKAY") {
-         state = ClientState.wait_turn;
-         processExchOkayMessage(msg);
-         return;
-      } else if (msg[0] == "PLAY-OKAY") {
-         state = ClientState.wait_turn;
-         processPlayOkayMessage(msg);
-         return;
-      } else if (msg[0] == "PASS-OKAY") {
-         state = ClientState.wait_turn;
-         return;
-      }
-
-   }
-
-   // Commands that work in several state
-   if (msg[0] == "GAME-OVER") {
-      processGameOverMessage(msg);
-
-   } else if (msg[0] == "SCORE") {
-      processScoreMessage(msg);
-
-      for (var i=0; i<playerScoreList.length; i++) {
-         showPlayerScore(i, playerScoreList[i][1]);
-      }
-
-   } else if (msg[0] == "TURN") {
-      processTurnMessage(msg);
-
-   } else if (msg[0] == "BOARDTILES") {
-      processBoardTilesMessage(msg);
-
-   } else if (msg[0] == "RACKTILES") {
-      processRackTilesMessage(msg);
-
-   } else if (msg[0] == "PLAY-OKAY") {
-      state = ClientState.wait_turn;
-      processPlayOkayMessage(msg);
-
-   } else if (msg[0] == "PASS-OKAY") {
-      state = ClientState.wait_turn;
-      return;
-
-   }
-
-}
--->
-</script>
-
-<div id="status"></div>
 
 </body>
 </html>
