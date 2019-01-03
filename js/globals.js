@@ -86,3 +86,8 @@ var domain = window.location.host.split(":")[0];
 var sock_url = "ws://" + domain + ":" + game_server_port + "/";
 
 var sock = null;
+
+// Popping sound from
+// https://freesound.org/people/deraj/sounds/202230/
+// License: CC0
+var popSound = "pop.wav";

@@ -7,12 +7,19 @@ from flask import send_from_directory
 app = Flask( __name__ )
 
 jsFiles = { "ui.js", "game.js", "globals.js" }
+mediaFiles = { "pop.wav" }
 
 @app.route('/js/<path>')
 def staticJs(path):
     if path not in jsFiles:
         return "not found"
     return send_from_directory('js', path)
+
+@app.route('/media/<path>')
+def mediaFile(path):
+    if path not in mediaFiles:
+        return "not found"
+    return send_from_directory('media', path)
 
 @app.route('/')
 def mainpage():

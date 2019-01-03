@@ -120,6 +120,8 @@ function processTurnMessage(msg) {
       state = ClientState.turn;
       buttons_disabled = false;
       turnKey = msg[2];
+
+      document.getElementById("popAudio").play();
    } else {
       state = ClientState.wait_turn;
       turnKey = "";
