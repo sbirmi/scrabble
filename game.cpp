@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <ctime>
 #include <map>
 #include <random>
 
@@ -744,10 +745,53 @@ Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
 }
 
 HandleResponseList
+Inst::process_cmd_chat(const Handle& hdl, const Json::Value &json) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+   HandleResponseList hrl;
+
+   // parse message size etc
+   if (json.size() != 2 || !json[1].isString()) {
+      std::cerr << "message error: command didn't have a message or doesn't have string message" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("CHAT-BAD", "message format or message")));
+      return hrl;
+   }
+
+   if (handleMode[hdl] == ModeIdle) {
+      // client hadn't introduced itself. Move it to viewer
+      std::cerr << "Client hasn't introduced itself as a viewer/player yet" << std::endl;
+      return hrl;
+   }
+
+   Json::Value chatmsg = jsonify("CHAT-MSG");
+
+   std::time_t now = std::time(nullptr);
+   std::time_t localtime = std::mktime(std::localtime(&now));
+
+   std::string name = "Viewer";
+   if (handleMode[hdl] >= 0) {
+      name = players[handleMode[hdl]]->name;
+   }
+
+   chatmsg.append(Json::Value((unsigned int) localtime));
+   chatmsg.append(Json::Value(name));
+   chatmsg.append(Json::Value(json[1].asString()));
+
+   broadcast_json_message(hrl, chatmsg);
+
+   return hrl;
+}
+
+HandleResponseList
 Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
    HandleResponseList hrl;
    Json::Value respJson;
+
+   if (gameOver) {
+      std::cerr << "game over already" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "game over")));
+      return hrl;
+   }
 
    // parse message size etc
    if (json.size() != 3 || !json[1].isString() || !json[2].isString()) {
@@ -979,11 +1023,13 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
 
    if (cmd == "VIEW") {
       return process_cmd_view(hdl, json);
+   } else if (cmd == "CHAT-SEND") {
+      return process_cmd_chat(hdl, json);
+   } else if (cmd == "JOIN") {
+      return process_cmd_join(hdl, json);
    } else if (gameOver) {
       std::cout << "Game over. Can't process " << cmd << std::endl;
       return HandleResponseList();
-   } else if (cmd == "JOIN") {
-      return process_cmd_join(hdl, json);
    } else if (cmd == "PASS") {
       return process_cmd_pass(hdl, json);
    } else if (cmd == "EXCH") {

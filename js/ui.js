@@ -510,6 +510,39 @@ function join_view_buttons_disabled(disabled) {
    document.getElementById("but_view").disabled = disabled;
 }
 
+function show_chat_panel() {
+   document.getElementById("chatPanelUi").style.display = "table";
+}
+
+function hide_chat_panel() {
+   document.getElementById("chatPanelUi").style.display = "none";
+}
+
+function clear_chat_panel() {
+   var tbody = document.getElementById("chatWindow").children[0];
+
+   while (tbody.firstChild) {
+      tbody.removeChild(tbody.firstChild);
+   }
+}
+
+function chat_add_message(ts, sender, message) {
+   var tbody = document.getElementById("chatWindow").children[0];
+
+   var row = tbody.insertRow(tbody.children.length);
+
+   var cell = row.insertCell(0);
+   cell.innerHTML = "(" + ts + ")";
+
+   var cell = row.insertCell(1);
+   cell.innerHTML = sender + ":";
+
+   var cell = row.insertCell(2);
+   cell.innerHTML = message;
+
+   row.scrollIntoView(false);
+}
+
 function show_connect_panel() {
    document.getElementById("connectpanel").style.display = "table";
 }
@@ -518,19 +551,33 @@ function hide_connect_panel() {
    document.getElementById("connectpanel").style.display = "none";
 }
 
+function send_chat_message() {
+   var chatInputUi = document.getElementById("chatInput");
+   if (!chatInputUi.value) {
+      return;
+   }
+   console.log("CHAT-SEND: " + chatInputUi.value);
+   sock.send(JSON.stringify( [ "CHAT-SEND", chatInputUi.value ] ));
+   chatInputUi.value = "";
+   return chatInputUi;
+}
+
 function connectStateTxn(state) {
    if (state == ConnectState.disconnected) {
       clearBoardAndRack();
       resetSock();
       show_connect_panel();
+      hide_chat_panel();
       showStatus("disconnected");
       join_view_buttons_disabled(false);
       buttonsDisabled(true);
 
       connect_state = state;
 
+
    } else if (state == ConnectState.connect_as_viewer) {
       show_connect_panel();
+      hide_chat_panel();
       showStatus("connecting");
       join_view_buttons_disabled(true);
       buttonsDisabled(true);
@@ -564,6 +611,7 @@ function connectStateTxn(state) {
       myName = name;
 
       show_connect_panel();
+      hide_chat_panel();
       showStatus("connecting");
       join_view_buttons_disabled(true);
       buttonsDisabled(true);
@@ -581,6 +629,7 @@ function connectStateTxn(state) {
 
    } else if (state == ConnectState.connected) {
       hide_connect_panel();
+      show_chat_panel();
       join_view_buttons_disabled(true);
       connect_state = state;
    }

@@ -40,6 +40,24 @@ body {
    font: 2em "Open Sans", sans-serif;
 }
 
+.chatWindow {
+   width: 800px;
+   height: 80px;
+   overflow: auto;
+   overflow-y: auto;
+   display: block;
+   font: 1.5em "Open Sans", sans-serif;
+}
+
+.chatInput {
+   width: 600px;
+   font: 1.5em "Open Sans", sans-serif;
+}
+
+.chatSend {
+   font: 1.5em "Open Sans", sans-serif;
+}
+
 .tilescore {
    position: relative;
    transform: translate(-5%, -105%);
@@ -143,6 +161,7 @@ body {
 </head>
 <body>
 
+<!-- Top connect panel -->
 <table border=0 id=connectpanel class=connectpanel>
 <tr>
    <td>
@@ -157,14 +176,11 @@ body {
 </tr>
 </table>
 
-
+<!-- Game board -->
 <table border=0 width=100%>
 <tr><td align=center>
    <!-- board -->
    <table id="board" border=0 width="991px" height="991px"></table>
-
-   <br>
-   <br>
 
    <table border=0>
    <tr id="bottompanel">
@@ -199,6 +215,25 @@ body {
    </table>
 
 </td></tr>
+</table>
+
+<!-- Chat window -->
+<table id="chatPanelUi" border="0px" align="center">
+<tr>
+   <td align=center>
+      <table id="chatWindow">
+      <tbody class="chatWindow">
+      </tbody>
+      </table>
+   </td>
+</tr>
+<tr>
+   <td align=center>
+      <span class="chatSend">CHAT</span>
+      <input id="chatInput" type=text class="chatInput">
+      <input class="chatSend" type=button value="SEND" onclick="send_chat_message();">
+   </td>
+</tr>
 </table>
 
 <script>

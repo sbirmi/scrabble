@@ -168,6 +168,9 @@ private:
    HandleResponseList process_cmd(
          const Handle&hdl,
          const Json::Value& val);
+   HandleResponseList process_cmd_chat(
+         const Handle& hdl,
+         const Json::Value &cmdJson);
    HandleResponseList process_cmd_view(
          const Handle& hdl,
          const Json::Value &cmdJson);

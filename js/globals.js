@@ -1,5 +1,5 @@
 // For UI
-var game_server_port = 5052;
+var game_server_port = 5051;
 var boardcell_size = 65;
 var tilewidth = 63;
 
@@ -11,7 +11,26 @@ var playerScoreList = [];
 var handTilesUi = [];
 
 // List of all tiles on the board
-var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
+//var boardtiles = new Array(15).fill(null).map(() => new Array(15).fill(null));
+// for old browsers
+var boardtiles = [
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ],
+   [ null, null, null, null, null, null, null, null, null, null, null, null, null, null, null ]
+];
+
 // List of all tiles on the rack
 var racktiles = [ null, null, null, null, null, null, null ];
 // List of tiles in the exchange area

@@ -58,6 +58,13 @@ SERVER -> CLIENT:
    [ "GAME-OVER" ]
 
 
+CLIENT -> SERVER:
+   [ "CHAT-SEND", "string" ]
+
+   SERVER -> CLIENT:
+      [ "CHAT-BAD", <reason> ]
+      [ "CHAT-MSG", <utc-timestamp>, <name>, <message> ]
+
 
 ------------------------------------------------
 

@@ -4,7 +4,6 @@ function processGameOverMessage(msg) {
    document.getElementById("exchbutton").disabled = true;
    document.getElementById("passbutton").disabled = true;
    document.getElementById("playbutton").disabled = true;
-   sock.close();
 }
 
 function processExchOkayMessage(msg) {
@@ -270,6 +269,11 @@ function sock_onmessage(event) {
    // Commands that work in several state
    if (msg[0] == "GAME-OVER") {
       processGameOverMessage(msg);
+
+   } else if (msg[0] == "CHAT-MSG") {
+      var dt = new Date(0);
+      dt.setUTCSeconds(msg[1]);
+      chat_add_message(dt.toLocaleTimeString(), msg[2], msg[3]);
 
    } else if (msg[0] == "SCORE") {
       processScoreMessage(msg);
