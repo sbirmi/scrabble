@@ -554,7 +554,13 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 void
 Inst::start_game(HandleResponseList &hrl) {
    // pick who will start the game
-   std::cout << __PRETTY_FUNCTION__ << " first turn=" << turnIndex << std::endl;
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+
+   std::mt19937 rng;
+   rng.seed(std::random_device()());
+   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
+   turnIndex = dist6(rng);
+   std::cout << "turnIndex = " << turnIndex << std::endl;
 
    std::cout << tiles.size() << std::endl;
 
@@ -1051,16 +1057,10 @@ Inst::Inst(unsigned int _gid, const WordList *_wl) :
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
    srand(time(NULL));
-   std::mt19937 rng;
-   rng.seed(std::random_device()());
 
    tiles = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ  ";
    assert(tiles.length() == 100);
    shuffle_bag();
-
-   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
-   turnIndex = dist6(rng);
-   std::cout << "turnIndex = " << turnIndex << std::endl;
 
    for (unsigned int r=0; r<15; ++r) {
       for (unsigned int c=0; c<15; ++c) {
