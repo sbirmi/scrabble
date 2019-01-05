@@ -1047,10 +1047,10 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
    return HandleResponseList();
 }
 
-Inst::Inst(unsigned int _gid, const WordList *_wl) :
+Inst::Inst(unsigned int _gid, const WordList *_wl, const unsigned int _maxPlayers) :
       gid(_gid),
       wl(_wl),
-      maxPlayers(2),
+      maxPlayers(_maxPlayers),
       gameOver(false),
       wordsMade(0),
       passesMade(0),

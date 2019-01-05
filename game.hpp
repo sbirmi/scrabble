@@ -200,7 +200,7 @@ private:
          const Handle& hdl, Json::Value json);
 
 public:
-   Inst(unsigned int _gid, const WordList *);
+   Inst(unsigned int _gid, const WordList *, const unsigned int);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);
