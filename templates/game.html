@@ -165,8 +165,8 @@ body {
 <table border=0 id=connectpanel class=connectpanel>
 <tr>
    <td>
-      <input id=name class=connecttext placeholder="PlayerName">
-      <input id=password class=connecttext placeholder="SecretKey">
+      <input id=name class=connecttext placeholder="PlayerName" onkeypress="playername_keypress(event);">
+      <input id=password class=connecttext placeholder="SecretKey" onkeypress="password_keypress(event);">
       <input id=but_join type=button class=connectbutton value="JOIN" onclick="connectStateTxn(ConnectState.connect_as_player);">
       <input id=but_view type=button class=connectbutton value="VIEW" onclick="connectStateTxn(ConnectState.connect_as_viewer);">
    </td>
@@ -230,8 +230,8 @@ body {
 <tr>
    <td align=center>
       <span class="chatSend">CHAT</span>
-      <input id="chatInput" type=text class="chatInput">
-      <input class="chatSend" type=button value="SEND" onclick="send_chat_message();">
+      <input id="chatInput" type=text class="chatInput" onkeypress="chatInput_keypress(event);">
+      <input id="chatSend" class="chatSend" type=button value="SEND" onclick="send_chat_message();">
    </td>
 </tr>
 </table>

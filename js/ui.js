@@ -1,3 +1,21 @@
+function playername_keypress(event) {
+   if (event.keyCode == 13) {
+      document.getElementById("password").focus();
+   }
+}
+
+function password_keypress(event) {
+   if (event.keyCode == 13) {
+      document.getElementById("but_join").click();
+   }
+}
+
+function chatInput_keypress(event) {
+   if (event.keyCode == 13) {
+      document.getElementById("chatSend").click();
+   }
+}
+
 function boardCell(r, c) {
    return document.getElementById("board_" + r + "_" + c);
 }
