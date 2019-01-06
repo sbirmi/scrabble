@@ -39,7 +39,8 @@ var exchangetiles = []
 
 var rackspotEles = [];
 
-var dragObj = null;
+// The tile that's selected
+var selectedTile = null;
 
 var letterscore = {
    "A": 1, "B": 3, "C": 3, "D": 2, "E": 1,
@@ -56,6 +57,7 @@ var letterscore = {
    "z": 0,
 }
 
+var blankLetterChgTimer = null;
 
 // For the game protocol
 var myName = "";

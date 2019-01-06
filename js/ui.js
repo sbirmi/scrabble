@@ -20,6 +20,27 @@ function boardCell(r, c) {
    return document.getElementById("board_" + r + "_" + c);
 }
 
+function selectTile(ele) {
+   // if a previous tile is selected, unselect it
+   var prevtile = selectedTile;
+
+   if (prevtile) {
+      selectedTile = null;
+      prevtile.setAttribute("class", "tile");
+   }
+
+   if (prevtile != ele && ele) {
+      selectedTile = ele;
+      ele.setAttribute("class", "tilehighlight");
+   }
+
+   if (selectedTile && upperLetterOrBlank(tileText(selectedTile)) == " ") {
+      document.getElementById("blbutton").disabled = false;
+   } else {
+      document.getElementById("blbutton").disabled = true;
+   }
+}
+
 function showPlayerScore(plIdx, score) {
    var scoreUi = document.getElementById("playerscore" + plIdx);
    scoreUi.innerHTML = score;
@@ -65,6 +86,19 @@ function createBoardTile(letter) {
    return tile;
 }
 
+function nextLetterOnBlank(tt, spd) {
+   var blankTileLetters = " abcdefghijklmnopqrstuvwxyz";
+   var idx = blankTileLetters.indexOf(tt.innerHTML);
+   idx += spd;
+
+   if (idx < 0) {
+      idx += blankTileLetters.length;
+   } else {
+      idx = idx % blankTileLetters.length;
+   }
+   tt.innerHTML = blankTileLetters[idx];
+}
+
 function createRackTile(letter) {
    var score = letterscore[letter];
 	var tile = document.createElement("div");
@@ -85,35 +119,72 @@ function createRackTile(letter) {
 	tilescore.setAttribute("class", "tilescore noselect");
    tilescore.innerHTML = score.toString();
 
-   if (letter == " ") {
-      tile.style.color = "#0000ff";
-      tile.onclick = function(ev) {
-         var blankTileLetters = " abcdefghijklmnopqrstuvwxyz";
-         var idx = blankTileLetters.indexOf(tiletext.innerHTML);
-         if (ev.layerX > tilewidth/2) {
-            idx += 1;
-         } else {
-            idx -= 1;
-         }
-         if (idx == -1) {
-            idx += blankTileLetters.length;
-         } else {
-            idx = idx % blankTileLetters.length;
-         }
-         tiletext.innerHTML = blankTileLetters[idx];
+   tile.setAttribute("onrack", 1);
+
+   function tileclick(ev) {
+      var lastSelectedTile = selectedTile;
+
+      if (lastSelectedTile == ev.target) {
+         // unselect self and stop
+         selectTile(ev.target);
+         console.log(ev);
+         ev.stopPropagation();
+         return;
       }
+
+      if (lastSelectedTile == null) {
+         selectTile(ev.target);
+         ev.stopPropagation();
+         return;
+      }
+
+      // If newly selected tile is not on rack,
+      // we are toggling highlighted tile
+      if (ev.target.getAttribute("onrack") == 0) {
+         selectTile(ev.target);
+         ev.stopPropagation();
+         return;
+      }
+
+      // Newly selected tile is on rack,
+      // we will assume we want to place the
+      // previously selected tile at
+      // this new spot
+      var rackspot = racktiles.indexOf(ev.target);
+      setTileInRack(selectedTile, rackspot);
+      removeTileFromBoard(selectedTile);
+      removeTileFromExchArea(selectedTile);
+      selectTile(selectedTile);
+      ev.stopPropagation();
+   }
+   tile.onclick = function(ev) {
+      tileclick(ev);
    }
 
-   dragElement(tile);
+   if (letter == " ") {
+      tile.style.color = "#0000ff";
+   }
+
    return tile;
 }
 
-function tileText(ele) {
-   for (var i=0; i<ele.children.length; ++i) {
-      var tile = ele.children[i];
-      if (tile.className.includes("tiletext")) {
-         return tile.innerHTML;
+function tiletextUiFromTile(tile) {
+   if (!tile) {
+      return null;
+   }
+   for (var i=0; i<tile.children.length; ++i) {
+      var obj = tile.children[i];
+      if (obj.className.includes("tiletext")) {
+         return obj
       }
+   }
+   return null;
+}
+
+function tileText(ele) {
+   var tiletext = tiletextUiFromTile(ele);
+   if (tiletext) {
+      return tiletext.innerHTML;
    }
    return "";
 }
@@ -150,64 +221,34 @@ function removeTileFromExchArea(ele) {
    var exchIdx = exchangetiles.indexOf(ele);
    if (exchIdx > -1) {
       exchangetiles.splice(exchIdx, 1);
+      rearrange_exch_tiles();
    }
 }
 
-function dropOn(ele, x, y) {
-   // See if we are dropping the tile in the exchange area
-   var exchAreaUi = document.getElementById("exchangeArea");
-   var exchAreaRect = exchAreaUi.getBoundingClientRect();
-   if (coordsInRect(x, y, exchAreaRect)) {
-      // If tile is coming from the board, remove it from there
-      removeTileFromBoard(dragObj);
-
-      // If tile is from the rack, remove it from there
-      removeTileFromRack(dragObj);
-
-      // Add it to exchange
-      if (exchangetiles.indexOf(ele) == -1) {
-         // The tile wasn't in the exchange area so
-         // needs to be added there
-         exchangetiles.push(ele);
-      }
-      return true;
+function setTileInExchArea(ele) {
+   if (!ele) {
+      return;
    }
-
-
-   // See if we are dropping the tile on the rack
-   var rackEle = document.getElementById("tilerack");
-   var rackEleRect = rackEle.getBoundingClientRect();
-   if (coordsInRect(x, y, rackEleRect)) {
-      for (var i=0; i < rackspotEles.length; i++) {
-         if (coordsInRect(x, y,rackspotEles[i].getBoundingClientRect())) {
-            console.log("Dropping tile at rack spot " + i);
-            removeTileFromBoard(dragObj);
-            removeTileFromExchArea(dragObj);
-
-            setTileInRack(dragObj, i);
-            return true;
-         }
-      }
+   if (exchangetiles.indexOf(ele) >= 0) {
+      return;
    }
+   ele.setAttribute("onrack", 0);
+   // The tile wasn't in the exchange area so
+   // needs to be added there
+   exchangetiles.push(ele);
 
-   // See if we are droppnig the tile on the board
-//   console.log("dropping at x=" + x + " y=" + y);
-//   console.log(document.getElementById("board_0_0").getBoundingClientRect());
-   for (var r=0; r<15; ++r) {
-      for (var c=0; c<15; ++c) {
-         if (coordsInRect(x, y,
-               boardCell(r, c).getBoundingClientRect())) {
-            console.log("dropped '" + tileText(dragObj) + "' on board at " + r + "," + c);
-            success = setTileOnBoard(dragObj, r, c);
-            if (success) {
-               removeTileFromExchArea(ele);
-               removeTileFromRack(ele);
-            }
-            return success;
-         }
-      }
+   ele.remove();
+   document.getElementById("exchangeArea").appendChild(ele);
+
+   rearrange_exch_tiles();
+}
+
+function rearrange_exch_tiles() {
+   for (var i=0; i<exchangetiles.length; ++i) {
+      var tile = exchangetiles[i];
+      tile.style.left = ((i % 4) * boardcell_size) + "px";
+      tile.style.top = (Math.floor(i/4) * boardcell_size) + "px";
    }
-   return false;
 }
 
 function setTileOnBoard(ele, r, c) {
@@ -235,6 +276,8 @@ function setTileOnBoard(ele, r, c) {
    ele.style.top = "1px";
    ele.style.left = "1px";
 
+   ele.setAttribute("onrack", 0);
+
    return true;
 }
 
@@ -255,6 +298,8 @@ function setTileInRack(ele, idx) {
       document.getElementById(rackposName(idx)).appendChild(ele);
       ele.style.top = "1px";
       ele.style.left = "1px";
+
+      ele.setAttribute("onrack", 1);
 
       return;
    }
@@ -297,82 +342,10 @@ function setTileInRack(ele, idx) {
 
 }
 
-function dragElement(ele) {
-   var deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
-   var startTop = 0, startLeft = 0;
-
-   ele.onmousedown = dragMouseDown;
-   ele.addEventListener("touchstart", dragMouseDown, false);
-   ele.addEventListener("touchmove", elementDrag, false);
-   ele.addEventListener("touchcancel", closeDragElement, false);
-   ele.addEventListener("touchend", closeDragElement, false);
-
-   function dragMouseDown(e) {
-      e = e || window.event;
-      if (e instanceof MouseEvent) {
-         lastX = e.clientX;
-         lastY = e.clientY;
-      } else if (e instanceof TouchEvent) {
-         if (e.changedTouches.length > 0) {
-            var touch = e.changedTouches[0]
-            lastX = touch.pageX;
-            lastY = touch.pageY;
-         } else {
-            return;
-         }
-      } else {
-         return;
-      }
-      dragObj = e.target.parentElement;
-      startTop = dragObj.style.top;
-      startLeft = dragObj.style.left;
-      e.preventDefault();
-      document.onmouseup = closeDragElement;
-      document.onmousemove = elementDrag;
-      document.ontouchmove = elementDrag;
-   }
-
-   function elementDrag(e) {
-      e = e || window.event;
-      if (!e || !e.clientX) { return; }
-      e.preventDefault();
-      deltaX = lastX - e.clientX;
-      deltaY = lastY - e.clientY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      dragObj.style.top = (dragObj.offsetTop - deltaY) + "px";
-      dragObj.style.left = (dragObj.offsetLeft - deltaX) + "px";
-//      ele.style.top = (ele.offsetTop - deltaY) + "px";
-//      ele.style.left = (ele.offsetLeft - deltaX) + "px";
-   }
-
-   function closeDragElement(e) {
-      var stopX = e.clientX;
-      var stopY = e.clientY;
-
-      if (e instanceof TouchEvent) {
-         if (e.changedTouches.length > 0) {
-            var touch = e.changedTouches[0]
-            stopX = touch.pageX;
-            stopY = touch.pageY;
-         } else {
-            return;
-         }
-      }
-
-      var success = dropOn(dragObj, stopX, stopY);
-      if (!success) {
-         dragObj.style.top = startTop;
-         dragObj.style.left = startLeft;
-      }
-      dragObj = null;
-      document.onmouseup = null;
-      document.onmousemove = null;
-      document.ontouchmove = null;
-   }
-}
-
 function click_shuf_tiles() {
+   // Unhighlight selected tile
+   selectTile(selectedTile);
+
    // 1. Remove the tile from the board and rack
    console.log("shuf_tiles begin handTilesUi.length = " + handTilesUi.length);
    for (var i=0; i<handTilesUi.length; ++i) {
@@ -391,6 +364,18 @@ function click_shuf_tiles() {
    }
 
    console.log("shuf_tiles end handTilesUi.length = " + handTilesUi.length);
+}
+
+function click_blank_button() {
+   if (!selectedTile) {
+      document.getElementById("blbutton").disabled = true;
+      return;
+   }
+
+   var tt = tiletextUiFromTile(selectedTile);
+   if (tt) {
+      nextLetterOnBlank(tt, 1);
+   }
 }
 
 function click_exch_button() {
@@ -478,7 +463,6 @@ function setupBoard() {
          holder_div.style.height = tilewidth + "px";
          cell.appendChild(holder_div);
 
-
          var cell_design = document.createElement("div");
          cell_design.style.position = "absolute";
          cell_design.zIndex = 1;
@@ -498,6 +482,23 @@ function setupBoard() {
             cell_design.innerHTML = "Double Letter Score";
          }
 
+         holder_div.setAttribute("row", r);
+         holder_div.setAttribute("col", c);
+
+         holder_div.onclick = function (ev) {
+            var row = ev.target.getAttribute("row");
+            var col = ev.target.getAttribute("col");
+
+            if (!selectedTile) {
+               return;
+            }
+            var success = setTileOnBoard(selectedTile, row, col);
+            if (success) {
+               removeTileFromExchArea(selectedTile);
+               removeTileFromRack(selectedTile);
+               selectTile(selectedTile);
+            }
+         }
       }
    }
 }
@@ -513,7 +514,34 @@ function setupRack() {
       cell.style.width = tilewidth.toString() + "px";
       cell.style.height = tilewidth.toString() + "px";
       rackspotEles.push(cell);
+
+      cell.setAttribute("spot", i);
+
+      cell.onclick = function (ev) {
+         if (ev.target.id.substring(0, 7) != "rackpos") {
+            return;
+         }
+         var spot = ev.target.getAttribute("spot");
+
+         console.log("Dropped tile on rack spot=" + spot);
+         setTileInRack(selectedTile, spot);
+         removeTileFromBoard(selectedTile);
+         removeTileFromExchArea(selectedTile);
+         selectTile(selectedTile);
+      }
    }
+}
+
+function clickExchangeArea() {
+   if (!selectedTile) {
+      return;
+   }
+
+   removeTileFromRack(selectedTile);
+   removeTileFromBoard(selectedTile);
+
+   setTileInExchArea(selectedTile);
+   selectTile(selectedTile);
 }
 
 function buttonsDisabled(state) {
@@ -521,6 +549,9 @@ function buttonsDisabled(state) {
    document.getElementById("exchbutton").disabled = state;
    document.getElementById("passbutton").disabled = state;
    document.getElementById("playbutton").disabled = state;
+   if (state) {
+      document.getElementById("blbutton").disabled = state;
+   }
 }
 
 function join_view_buttons_disabled(disabled) {

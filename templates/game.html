@@ -38,6 +38,14 @@ body {
    text-align: center;
    color: white;
    font: 2em "Open Sans", sans-serif;
+   pointer-events: none;
+}
+
+.exchareatext {
+   width: 252px;
+   height: 126px;
+   text-align: center;
+   color: white;
 }
 
 .chatWindow {
@@ -58,15 +66,6 @@ body {
    font: 1.5em "Open Sans", sans-serif;
 }
 
-.tilescore {
-   position: relative;
-   transform: translate(-5%, -105%);
-
-   font: 14px "Open Sans", sans-serif;
-   text-align: right;
-   z-index: 1;
-}
-
 .tile {
    position: absolute;
    background: #e6b988;
@@ -77,9 +76,31 @@ body {
    box-shadow: 1px 1px 1px 1px #666;
 }
 
+/* tilehighlight is a replacement for tile. Here, the background color is different */
+.tilehighlight {
+   position: absolute;
+   background: #c69968;
+   border-radius: 3px;
+   z-index: 10;
+   -moz-box-shadow:    1px 1px 1px 1px #666;
+   -webkit-box-shadow: 1px 1px 1px 1px #666;
+   box-shadow: 1px 1px 1px 1px #666;
+}
+
 .tiletext {
    font: 3em "Open Sans", sans-serif;
    text-align: center;
+   pointer-events: none;
+}
+
+.tilescore {
+   position: relative;
+   transform: translate(-5%, -105%);
+
+   font: 14px "Open Sans", sans-serif;
+   text-align: right;
+   z-index: 1;
+   pointer-events: none;
 }
 
 .board {
@@ -90,12 +111,14 @@ body {
    font: 12px "Open Sans", sans-serif;
    text-align: center;
    background: orange;
+   pointer-events: none;
 }
 
 .dw {
    font: 12px "Open Sans", sans-serif;
    text-align: center;
    background: red;
+   pointer-events: none;
 }
 
 .tl {
@@ -103,20 +126,24 @@ body {
    text-align: center;
    background: #06a006;
    vertical-align: middle;
+   pointer-events: none;
 }
 
 .dl {
    font: 12px "Open Sans", sans-serif;
    text-align: center;
    background: lightblue;
+   pointer-events: none;
 }
 
 .home {
    background: red;
+   pointer-events: none;
 }
 
 .bl {
    background: white;
+   pointer-events: none;
 }
 
 .tileblank {
@@ -184,10 +211,9 @@ body {
 
    <table border=0>
    <tr id="bottompanel">
-      <td>
+      <td id="exchangeArea" onclick="clickExchangeArea();" style="position: relative;">
          <div id="exchangeArea" class="excharea noselect">
-            Exchange<br/>
-            Tiles
+            Exchange<br>Tiles
          </div>
       </td>
       <td>
@@ -198,6 +224,9 @@ body {
          <tr>
             <td>
                <input type=button id="shufbutton" class="button" value="SHUF" disabled=True onclick="click_shuf_tiles();">
+            </td>
+            <td>
+               <input type=button id="blbutton" class="button" value="BL" disabled=True onclick="click_blank_button();">
             </td>
             <td>
                <input type=button id="exchbutton" class="button" value="EXCH" disabled=True onclick="click_exch_button();">
