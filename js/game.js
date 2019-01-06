@@ -20,7 +20,7 @@ function processExchOkayMessage(msg) {
          var handLetter = upperLetterOrBlank(tileText(tile));
 
          if (handLetter == letterToRemove) {
-            console.log("tile is also in the rack " + racktiles.indexOf(tile));
+            console.log("Tile is in rack at " + racktiles.indexOf(tile));
             removeTileFromRack(tile);
             tile.remove()
             handTilesUi.splice(i, 1);
@@ -292,6 +292,10 @@ function sock_onmessage(event) {
 
    } else if (msg[0] == "RACKTILES") {
       processRackTilesMessage(msg);
+
+   } else if (msg[0] == "EXCH-OKAY") {
+      state = ClientState.wait_turn;
+      processExchOkayMessage(msg);
 
    } else if (msg[0] == "PLAY-OKAY") {
       state = ClientState.wait_turn;
