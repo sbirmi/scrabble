@@ -7,7 +7,7 @@
 #include <websocketpp/server.hpp>
 #include <websocketpp/common/thread.hpp>
 
-#include "game.hpp"
+#include "lobby.hpp"
 #include "word_list.hpp"
 
 typedef websocketpp::server<websocketpp::config::asio> server;
@@ -22,6 +22,7 @@ using websocketpp::lib::mutex;
 using websocketpp::lib::lock_guard;
 using websocketpp::lib::unique_lock;
 using websocketpp::lib::condition_variable;
+
 
 enum action_type {
    SUBSCRIBE,
@@ -45,15 +46,14 @@ struct action {
 
 class broadcast_server {
    public:
-      broadcast_server(const WordList *, unsigned int);
+      broadcast_server(const WordList *);
       void run(uint16_t port);
       void on_open(connection_hdl hdl);
       void on_close(connection_hdl hdl);
       void on_message(connection_hdl hdl, server::message_ptr msg);
       void process_messages();
    private:
-      const WordList *wl;
-      Game::Inst *gi;
+      Lobby::Inst *lobby;
 
       typedef std::set<connection_hdl,std::owner_less<connection_hdl> > con_list;
 

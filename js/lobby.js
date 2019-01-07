@@ -80,6 +80,7 @@ function add_game_info(gid, completed, max_players, playerscore) {
    var link = document.createElement("a");
    link.appendChild(document.createTextNode(text));
    link.href = "/game/" + gid;
+   link.target = "_blank";
    li.appendChild(link);
 
    // Insert in reverse descending order
@@ -149,6 +150,8 @@ function sock_onopen(event) {
    console.log(event);
    show_warning_bar(false, "Connected");
    all_list_clear();
+   var list_msg = [ "LIST" ];
+   lobby_send(list_msg);
 }
 
 function sock_reset() {

@@ -112,47 +112,6 @@ Inst::stringify(const Json::Value& json) {
    return jsonWriter->write(json);
 }
 
-Json::Value
-Inst::jsonify(int i) {
-   return Json::Value(i);
-}
-
-Json::Value
-Inst::jsonify(const std::string& s1) {
-   Json::Value json;
-   json.append(Json::Value(s1));
-   return json;
-}
-
-Json::Value
-Inst::jsonify(const std::string& s1, const std::string& s2) {
-   Json::Value json;
-   json.append(Json::Value(s1));
-   json.append(Json::Value(s2));
-   return json;
-}
-
-Json::Value
-Inst::jsonify(const std::string& s1, const std::string& s2,
-              const std::string& s3) {
-   Json::Value json;
-   json.append(Json::Value(s1));
-   json.append(Json::Value(s2));
-   json.append(Json::Value(s3));
-   return json;
-}
-
-Json::Value
-Inst::jsonify(const char letter, unsigned int row, unsigned int col) {
-   Json::Value json;
-   std::string s=" ";
-   s[0] = letter;
-   json.append(Json::Value(s));
-   json.append(Json::Value(row));
-   json.append(Json::Value(col));
-   return json;
-}
-
 HandleResponse
 Inst::generateResponse(const Handle& hdl, Json::Value json) {
    return HandleResponse(hdl, stringify(json));
@@ -721,16 +680,16 @@ Inst::broadcast_turn_messages(HandleResponseList &hrl) {
    broadcast_json_message(hrl, get_player_turn_message(), get_others_turn_message());
 }
 
-HandleResponseList
-Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
+bool
+Inst::process_cmd_view(const Handle& hdl, const Json::Value &json,
+                       HandleResponseList& hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
 
    // parse message size etc
    if (json.size() != 1) {
       std::cerr << "message error: command should be 1 token long" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("VIEW-BAD", "message format")));
-      return hrl;
+      return false;
    }
 
    if (handleMode[hdl] == ModeIdle) {
@@ -740,32 +699,32 @@ Inst::process_cmd_view(const Handle& hdl, const Json::Value &json) {
 
       hrl.push_back(generateResponse(hdl, jsonify("VIEW-OKAY")));
       dump_game_state(hdl, hrl);
-      return hrl;
+      return false;
    } else {
       std::cerr << "client already connected and is in mode " << handleMode[hdl] << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("VIEW-BAD", "already connected")));
-      return hrl;
+      return false;
    }
 
-   return hrl;
+   return false;
 }
 
-HandleResponseList
-Inst::process_cmd_chat(const Handle& hdl, const Json::Value &json) {
+bool
+Inst::process_cmd_chat(const Handle& hdl, const Json::Value &json,
+                       HandleResponseList& hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
 
    // parse message size etc
    if (json.size() != 2 || !json[1].isString()) {
       std::cerr << "message error: command didn't have a message or doesn't have string message" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("CHAT-BAD", "message format or message")));
-      return hrl;
+      return false;
    }
 
    if (handleMode[hdl] == ModeIdle) {
       // client hadn't introduced itself. Move it to viewer
       std::cerr << "Client hasn't introduced itself as a viewer/player yet" << std::endl;
-      return hrl;
+      return false;
    }
 
    Json::Value chatmsg = jsonify("CHAT-MSG");
@@ -784,26 +743,26 @@ Inst::process_cmd_chat(const Handle& hdl, const Json::Value &json) {
 
    broadcast_json_message(hrl, chatmsg);
 
-   return hrl;
+   return false;
 }
 
-HandleResponseList
-Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
+bool
+Inst::process_cmd_join(const Handle& hdl, const Json::Value &json,
+                       HandleResponseList &hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
    Json::Value respJson;
 
    if (gameOver) {
       std::cerr << "game over already" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "game over")));
-      return hrl;
+      return false;
    }
 
    // parse message size etc
    if (json.size() != 3 || !json[1].isString() || !json[2].isString()) {
       std::cerr << "message error: not 3 tokens or input doesn't have strings" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "message format")));
-      return hrl;
+      return false;
    }
 
    if (handleMode[hdl] == ModeIdle) {
@@ -820,11 +779,11 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
 
                hrl.push_back(generateResponse(hdl, jsonify("JOIN-OKAY")));
                dump_game_state(hdl, hrl);
-               return hrl;
+               return false;
             } else {
                // bad password
                hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "bad password")));
-               return hrl;
+               return false;
             }
          }
       }
@@ -833,7 +792,7 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
       // hit max players, stop here
       if (players.size() == maxPlayers) {
          hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "max players reached")));
-         return hrl;
+         return false;
       }
 
       // Join as a new player
@@ -852,7 +811,7 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
          start_game(hrl);
       }
 
-      return hrl;
+      return true;
 
    } else {
       // already a viewer or a player
@@ -860,74 +819,74 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json) {
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-BAD", "already joined")));
    }
 
-   return hrl;
+   return false;
 }
 
-HandleResponseList
-Inst::process_cmd_pass(const Handle& hdl, const Json::Value &json) {
+bool
+Inst::process_cmd_pass(const Handle& hdl, const Json::Value& json,
+                       HandleResponseList& hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
    Json::Value respJson;
 
    // parse message size etc
    if (json.size() != 2 || !json[1].isString()) {
       std::cerr << "message error: not 2 tokens or input doesn't have strings" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "message format")));
-      return hrl;
+      return false;
    }
 
    if (handleMode[hdl] != (int)turnIndex) {
       std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "out of turn")));
-      return hrl;
+      return false;
    }
 
    if (json[1].asString() != players[turnIndex]->turnkey) {
       std::cerr << "out of turn: turnkey mismatch" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "bad turnkey")));
-      return hrl;
+      return false;
    }
 
    // Player turnIndex wants to pass
    hrl.push_back(generateResponse(hdl, jsonify("PASS-OKAY")));
    next_turn(hrl, true); 
-   return hrl;
+   return false;
 }
 
-HandleResponseList
-Inst::process_cmd_exch(const Handle& hdl, const Json::Value &cmdJson) {
+bool
+Inst::process_cmd_exch(const Handle& hdl, const Json::Value& cmdJson,
+                       HandleResponseList& hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
 
    // parse message for correctness
    if (cmdJson.size() != 3 || !cmdJson[1].isString() || !cmdJson[2].isString()) {
       std::cerr << "message error: length or all arguments being strings" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "message format")));
-      return hrl;
+      return false;
    }
 
    if (cmdJson[2].asString().length() == 0 || cmdJson[2].asString().length() > 7) {
       std::cerr << "message error: incorrect number of letters" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "incorrect number of letters")));
-      return hrl;
+      return false;
    }
 
    if (handleMode[hdl] != (int)turnIndex) {
       std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "out of turn")));
-      return hrl;
+      return false;
    }
 
    if (cmdJson[1].asString() != players[turnIndex]->turnkey) {
       std::cerr << "out of turn: turnkey mismatch" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "bad turnkey")));
-      return hrl;
+      return false;
    }
 
    if (tiles.length() < 7) {
       std::cerr << "too few letters in bag to exchange tiles. count=" << tiles.length() << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("EXCH-BAD", "too few tiles")));
-      return hrl;
+      return false;
    }
 
    // TODO check that provided letters are a-zA-Z or a blank tile
@@ -940,19 +899,19 @@ Inst::process_cmd_exch(const Handle& hdl, const Json::Value &cmdJson) {
       next_turn(hrl, false);
    }
 
-   return hrl;
+   return false;
 }
 
-HandleResponseList
-Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
+bool
+Inst::process_cmd_play(const Handle& hdl, const Json::Value& cmdJson,
+                       HandleResponseList& hrl) {
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-   HandleResponseList hrl;
 
    // parse message size etc
    if (cmdJson.size() < 2 || cmdJson.size() > 9) {
       std::cerr << "message error: incorrect number of tiles played" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "incorrect number of tiles played")));
-      return hrl;
+      return false;
    }
 
    for (unsigned int i=2; i<cmdJson.size(); ++i) {
@@ -960,20 +919,20 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
           !cmdJson[i][0].isString() || !cmdJson[i][1].isUInt() || !cmdJson[i][2].isUInt()) {
          std::cerr << "message error: incorrect message format" << std::endl;
          hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "message format")));
-         return hrl;
+         return false;
       }
    }
 
    if (handleMode[hdl] != (int)turnIndex) {
       std::cerr << "out of turn: turnIndex = " << turnIndex << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "out of turn")));
-      return hrl;
+      return false;
    }
 
    if (cmdJson[1].asString() != players[turnIndex]->turnkey) {
       std::cerr << "out of turn: turnkey mismatch" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad turnkey")));
-      return hrl;
+      return false;
    }
 
    // TODO check that provided letters are a-zA-Z
@@ -992,7 +951,7 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    if (score < 0) {
       std::cerr << "out of turn: play_score() returned negative score" << std::endl;
       hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad move")));
-      return hrl;
+      return false;
    }
 
    ++wordsMade;
@@ -1010,8 +969,6 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    }
    broadcast_json_message(hrl, boardtiles);
 
-   // TODO are all players out of tiles? If so, end the game
-
    // issue new tiles to the player
    issue_tiles(turnIndex, hrl);
 
@@ -1020,42 +977,46 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value &cmdJson) {
    broadcast_score_messages(hrl);
 
    next_turn(hrl, false); 
-   return hrl;
+   return true;
 }
 
-HandleResponseList
-Inst::process_cmd(const Handle& hdl, const Json::Value &json) {
+bool
+Inst::process_cmd(const Handle& hdl, const Json::Value &json,
+                  HandleResponseList& hrl) {
    auto cmd = json[0].asString();
 
    if (cmd == "VIEW") {
-      return process_cmd_view(hdl, json);
+      return process_cmd_view(hdl, json, hrl);
    } else if (cmd == "CHAT-SEND") {
-      return process_cmd_chat(hdl, json);
+      return process_cmd_chat(hdl, json, hrl);
    } else if (cmd == "JOIN") {
-      return process_cmd_join(hdl, json);
+      return process_cmd_join(hdl, json, hrl);
    } else if (gameOver) {
       std::cout << "Game over. Can't process " << cmd << std::endl;
-      return HandleResponseList();
+      return false;
    } else if (cmd == "PASS") {
-      return process_cmd_pass(hdl, json);
+      return process_cmd_pass(hdl, json, hrl);
    } else if (cmd == "EXCH") {
-      return process_cmd_exch(hdl, json);
+      return process_cmd_exch(hdl, json, hrl);
    } else if (cmd == "PLAY") {
-      return process_cmd_play(hdl, json);
+      return process_cmd_play(hdl, json, hrl);
    }
 
-   return HandleResponseList();
+   return false;
 }
 
-Inst::Inst(unsigned int _gid, const WordList *_wl, const unsigned int _maxPlayers) :
+Inst::Inst(unsigned int _gid, const WordList *_wl,
+           const unsigned int _maxPlayers,
+           Json::Reader *_jsonReader,
+           Json::FastWriter *_jsonWriter) :
       gid(_gid),
       wl(_wl),
       maxPlayers(_maxPlayers),
       gameOver(false),
       wordsMade(0),
       passesMade(0),
-      jsonReader(new Json::Reader()),
-      jsonWriter(new Json::FastWriter()) {
+      jsonReader(_jsonReader),
+      jsonWriter(_jsonWriter) {
    srand(time(NULL));
 
    tiles = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ  ";
@@ -1104,10 +1065,10 @@ Inst::handle_disappear(const Handle& hdl) {
    handleMode.erase(hdl);
 }
 
-HandleResponseList
+bool
 Inst::process_msg(const Handle& hdl,
-                  const server::message_ptr& msg) {
-   HandleResponseList hrl;
+                  const server::message_ptr& msg,
+                  HandleResponseList& hrl) {
    std::cerr << __PRETTY_FUNCTION__  << msg->get_payload() << std::endl;
 
    Json::Value json;
@@ -1116,30 +1077,48 @@ Inst::process_msg(const Handle& hdl,
    res = jsonReader->parse(msg->get_payload(), json);
    if (!res) {
       std::cerr << "message error: couldn't parse: " << msg->get_payload() << std::endl;
-      return hrl;
+      return false;
    }
 
    if (json.empty()) {
       std::cerr << "message error: empty json" << std::endl;
-      return hrl;
+      return false;
    }
 
    if (!json.isArray()) {
       std::cerr << "message error: input not an array" << std::endl;
-      return hrl;
+      return false;
    }
 
    if (json.size() == 0) {
       std::cerr << "message error: array empty" << std::endl;
-      return hrl;
+      return false;
    }
 
    auto cmdJson = json[0];
 
    if (!cmdJson.isString()) {
       std::cerr << "message error: CMD not a string" << std::endl;
-      return hrl;
+      return false;
    }
 
-   return process_cmd(hdl, json);
+   return process_cmd(hdl, json, hrl);
+}
+
+Json::Value
+Inst::status() {
+   Json::Value json;
+   json.append(Json::Value("GAME"));
+   json.append(Json::Value(gid));
+   json.append(Json::Value(gameOver));
+   json.append(Json::Value(maxPlayers));
+
+   for (const auto& pl : players) {
+      Json::Value plsc;
+      plsc.append(Json::Value(pl->name));
+      plsc.append(pl->score);
+      json.append(plsc);
+   }
+
+   return json;
 }

@@ -9,19 +9,27 @@ game-server.o: game-server.cpp game-server.hpp game.hpp
 broadcast_server.o: broadcast_server.cpp game-server.hpp
 	g++ ${CPPFLAGS} -c broadcast_server.cpp
 
-game.o: game.cpp game.hpp
+game.o: game.cpp game.hpp conn.hpp
 	g++ ${CPPFLAGS} -c game.cpp
 
 word_list.o: word_list.cpp word_list.hpp
 	g++ ${CPPFLAGS} -c word_list.cpp
 
-game-server: broadcast_server.o game-server.o game.o word_list.o
+lobby.o: lobby.cpp lobby.hpp conn.hpp
+	g++ ${CPPFLAGS} -c lobby.cpp
+
+json_util.o: json_util.cpp json_util.hpp
+	g++ ${CPPFLAGS} -c json_util.cpp
+
+game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_util.o
 	g++ \
 		${LDFLAGS} \
 		broadcast_server.o \
 		game-server.o \
 		game.o \
 		word_list.o \
+		lobby.o \
+		json_util.o \
 		-lboost_system -lboost_thread -lpthread -ljsoncpp \
 		-o game-server
 

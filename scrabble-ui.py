@@ -31,15 +31,11 @@ def mediaFile(path):
         return "not found"
     return send_from_directory('media', path)
 
-@app.route('/')
-def mainpage():
-    return render_template("game.html", gid=0)
-
 @app.route('/game/<gid>')
 def game(gid):
     return render_template("game.html", gid=gid)
 
-@app.route('/lobby')
+@app.route('/')
 def lobby():
     return render_template("lobby.html")
 

@@ -9,23 +9,20 @@
 #include <boost/thread/condition_variable.hpp>*/
 
 int main(int argc, char *argv[]) {
-   if (argc != 3) {
-      std::cout << "Usage: game-server <portnumber> <maxPlayers>" << std::endl << std::endl;
+   if (argc != 2) {
+      std::cout << "Usage: game-server <portnumber>" << std::endl << std::endl;
       return -1;
    }
 
    WordList *wl = new WordList("wordlist.txt");
-   unsigned maxPlayers = atoi(argv[2]);
-
-   assert(maxPlayers <= 4);
 
    try {
-      broadcast_server server_instance(wl, maxPlayers);
+      broadcast_server server_instance(wl);
 
       // Start a thread to run the processing loop
       thread t(bind(&broadcast_server::process_messages,&server_instance));
 
-      std::cout << "Listening on port=" << atoi(argv[1]) << " maxPlayers=" << maxPlayers << std::endl;
+      std::cout << "Listening on port=" << atoi(argv[1]) << std::endl;
 
       // Run the asio loop with the main thread
       server_instance.run(atoi(argv[1]));

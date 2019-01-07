@@ -1,26 +1,18 @@
 #ifndef __GAME_HPP
 #define __GAME_HPP
 
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/server.hpp>
-#include <websocketpp/common/thread.hpp>
-
-#include <json/reader.h>
-#include <json/value.h>
-#include <json/writer.h>
-
 #include <string>
 #include <map>
-#include <set>
 #include <utility>
 #include <vector>
 
+#include "json_util.hpp"
+#include "conn.hpp"
 #include "word_list.hpp"
 
+typedef unsigned int GameId;
+
 typedef websocketpp::server<websocketpp::config::asio> server;
-typedef websocketpp::connection_hdl Handle;
-typedef std::pair<const Handle&, std::string> HandleResponse;
-typedef std::vector<HandleResponse> HandleResponseList;
 
 typedef int ClientMode;
 #define ModeIdle     (-2)
@@ -112,7 +104,7 @@ public:
 
 class Inst {
 private:
-   unsigned int gid;
+   GameId gid;
    const WordList *wl;
    const unsigned int maxPlayers;
    std::vector<Player *> players;
@@ -165,48 +157,54 @@ private:
    void broadcast_score_messages(HandleResponseList &hrl);
    void broadcast_turn_messages(HandleResponseList &hrl);
 
-   HandleResponseList process_cmd(
+   bool process_cmd(
          const Handle&hdl,
-         const Json::Value& val);
-   HandleResponseList process_cmd_chat(
+         const Json::Value& val,
+         HandleResponseList& hrl);
+   bool process_cmd_chat(
          const Handle& hdl,
-         const Json::Value &cmdJson);
-   HandleResponseList process_cmd_view(
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
+   bool process_cmd_view(
          const Handle& hdl,
-         const Json::Value &cmdJson);
-   HandleResponseList process_cmd_join(
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
+   bool process_cmd_join(
          const Handle& hdl,
-         const Json::Value &cmdJson);
-   HandleResponseList process_cmd_pass(
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
+   bool process_cmd_pass(
          const Handle& hdl,
-         const Json::Value &cmdJson);
-   HandleResponseList process_cmd_exch(
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
+   bool process_cmd_exch(
          const Handle& hdl,
-         const Json::Value &cmdJson);
-   HandleResponseList process_cmd_play(
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
+   bool process_cmd_play(
          const Handle& hdl,
-         const Json::Value &cmdJson);
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
 
    // convenience methods
    std::string stringify(const Json::Value& json);
-   Json::Value jsonify(int);
-   Json::Value jsonify(const std::string&);
-   Json::Value jsonify(const std::string&, const std::string&);
-   Json::Value jsonify(const std::string&, const std::string&,
-                       const std::string&);
-   Json::Value jsonify(const char letter, unsigned int row,
-                       unsigned int col);
    HandleResponse generateResponse(
          const Handle& hdl, Json::Value json);
 
 public:
-   Inst(unsigned int _gid, const WordList *, const unsigned int);
+   Inst(unsigned int _gid, const WordList *, const unsigned int,
+        Json::Reader *, Json::FastWriter *);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);
-   HandleResponseList process_msg(
+   // Returns if the game status has changed
+   // such that lobby viewers should be notified
+   bool process_msg(
          const Handle& hdl,
-         const server::message_ptr& msg);
+         const server::message_ptr& msg,
+         HandleResponseList& hrl);
+
+   Json::Value status();
 };
 
 }

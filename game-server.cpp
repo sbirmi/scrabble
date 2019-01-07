@@ -1,9 +1,8 @@
 #include "game-server.hpp"
 
 
-broadcast_server::broadcast_server(const WordList *_wl,
-                                   const unsigned int maxPlayers) : wl(_wl) {
-   gi = new Game::Inst(0, wl, maxPlayers);
+broadcast_server::broadcast_server(const WordList *_wl) {
+   lobby = new Lobby::Inst(_wl);
    // Initialize Asio Transport
    m_server.init_asio();
 
@@ -78,16 +77,16 @@ broadcast_server::process_messages() {
          lock_guard<mutex> guard(m_connection_lock);
          m_connections.insert(a.hdl);
 
-         gi->handle_appear(a.hdl);
+         lobby->handle_appear(a.hdl, a.resource);
       } else if (a.type == UNSUBSCRIBE) {
          lock_guard<mutex> guard(m_connection_lock);
          m_connections.erase(a.hdl);
 
-         gi->handle_disappear(a.hdl);
+         lobby->handle_disappear(a.hdl);
       } else if (a.type == MESSAGE) {
          lock_guard<mutex> guard(m_connection_lock);
 
-         auto handleResponses = gi->process_msg(a.hdl, a.msg);
+         auto handleResponses = lobby->process_msg(a.hdl, a.msg);
          for (const auto & hdlResponse : handleResponses) {
             m_server.send(hdlResponse.first, hdlResponse.second, a.msg->get_opcode());
          }

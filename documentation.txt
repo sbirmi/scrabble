@@ -1,4 +1,7 @@
-Lobby Message Protocol:
+Lobby Message Protocol: /lobby
+
+CLIENT -> SERVER:
+   [ "LIST" ]
 
 CLIENT -> SERVER:
    [ "HOST", <players> ]
@@ -11,7 +14,7 @@ CLIENT -> SERVER:
 
 ------------------------------------------------
 
-Game Message Protocol:
+Game Message Protocol: /game/<gid>
 
 CLIENT -> SERVER:
    [ "JOIN", <playername>, <secret> ]
