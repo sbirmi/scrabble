@@ -1,6 +1,18 @@
 <!doctype html>
 <html>
 <head>
+   <title>Game #{{gid}}</title>
+
+<script>
+<!--
+var gid = "{{gid}}";
+if (gid) {
+   gid = gid * 1;
+} else {
+   gid = 0;
+}
+-->
+</script>
 
 <style>
 <!--
@@ -266,7 +278,11 @@ body {
 </table>
 
 <audio id="popAudio">
-     <source src="media/pop.wav" type="audio/wav">
+   <!--
+      Popping sound from https://freesound.org/people/deraj/sounds/202230/
+      License: CC0
+   -->
+  <source src="/media/pop.wav" type="audio/wav">
 </audio>
 
 <script>
