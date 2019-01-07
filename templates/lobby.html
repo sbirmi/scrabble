@@ -6,13 +6,30 @@
 <style>
 <!--
 body {
-   background: steelblue;
+   background: #60a000;
    margin: 0px;
+}
+
+.header {
+   background: #409000;
+   padding: 4px;
+   font: 1.5em "Open Sans", sans-serif;
+   font-weight: bold;
+   text-align: center;
+}
+
+.section {
+   width: 600px;
+   border: 1px solid #409000;
+}
+
+.text {
+   font: 1.2em "Open Sans", sans-serif;
 }
 
 .warning {
    padding: 4px;
-   background: orange;
+   background: #207000;
    font: 1.5em "Open Sans", sans-serif;
 }
 -->
@@ -24,33 +41,45 @@ body {
 
 <div id=warning_bar_ui class=warning>Disconnected</div>
 
-<table border=0 width=100%>
-<tr>
-   <td valign=top width=34%>
-      <p><b>Waiting for players</b></p>
-      <ul id="waitingGames"></ul>
+<table class=section>
+   <tr><td class=header>Waiting for players</td></tr>
 
-      <p><b>Host a new game</b></p>
+   <tr><td class=text>
+      <ul id="waitingGames"></ul>
+   </td></tr>
+
+   <tr><td class=header>Host a game</td></tr>
+
+   <tr><td class=text align=center>
       Number of players
-      <select id="host_player_count_ui">
+      <select id="host_player_count_ui" class="text">
          <option>1</option>
          <option selected="selected">2</option>
          <option>3</option>
          <option>4</option>
       </select>
-      <input type=button value="HOST" onclick="lobby_host();"></input>
-   </td>
+      <input type=button value="HOST" class="text" onclick="lobby_host();"></input>
+   </td></tr>
+</table>
 
-   <td valign=top width=33%>
-      <p><b>Ongoing games</b></p>
+<br>
+
+<table class=section>
+   <tr><td class=header>Ongoing games</td></tr>
+
+   <tr><td class=text>
       <ul id="ongoingGames"></ul>
-   </td>
+   </td></tr>
+</table>
 
-   <td valign=top width=33%>
-      <p><b>Completed games</b></p>
+<br>
+
+<table class=section>
+   <tr><td class=header>Completed games</td></tr>
+
+   <tr><td>
       <ul id="completedGames"></ul>
-   </td>
-</tr>
+   </td></tr>
 </table>
 
 <script>
