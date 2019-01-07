@@ -1,3 +1,16 @@
+Lobby Message Protocol:
+
+CLIENT -> SERVER:
+   [ "HOST", <players> ]
+
+   SERVER -> CLIENT:
+      [ "HOST-BAD", <players>, <reason> ]
+
+   SERVER -> CLIENT:
+      [ "GAME", <gameid>, completed=true/false, maxPlayers, [ <playername1>, <score1> ], [ <playername2>, <score2> ], ... ]
+
+------------------------------------------------
+
 Game Message Protocol:
 
 CLIENT -> SERVER:
@@ -67,20 +80,3 @@ CLIENT -> SERVER:
 
 
 ------------------------------------------------
-
-
-CLIENT -> SERVER:
-   [ "CONNECTED", <playername>, <secret> ]
-
-SERVER -> CLIENT:
-   [ "RACKTILES", [ "A", "B", "C" ] ]
-
-SERVER -> CLIENT:
-   [ "BOARDTILES", [
-        [ "P", x, y ],
-        [ "Q", x, y ],
-     ] ]
-
-SERVER -> CLIENT:
-   [ "SCORE", [ [ <playername1>, <score1> ], [ <playername2>, <score2> ] ] ]
-

@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+   <title>Lobby</title>
+
+<style>
+<!--
+body {
+   background: steelblue;
+   margin: 0px;
+}
+
+.warning {
+   padding: 4px;
+   background: orange;
+   font: 1.5em "Open Sans", sans-serif;
+}
+-->
+</style>
+<script type="text/javascript" src="/js/lobby.js"></script>
+</head>
+
+<body>
+
+<div id=warning_bar_ui class=warning>Disconnected</div>
+
+<table border=0 width=100%>
+<tr>
+   <td valign=top width=34%>
+      <p><b>Waiting for players</b></p>
+      <ul id="waitingGames"></ul>
+
+      <p><b>Host a new game</b></p>
+      Number of players
+      <select id="host_player_count_ui">
+         <option>1</option>
+         <option selected="selected">2</option>
+         <option>3</option>
+         <option>4</option>
+      </select>
+      <input type=button value="HOST" onclick="lobby_host();"></input>
+   </td>
+
+   <td valign=top width=33%>
+      <p><b>Ongoing games</b></p>
+      <ul id="ongoingGames"></ul>
+   </td>
+
+   <td valign=top width=33%>
+      <p><b>Completed games</b></p>
+      <ul id="completedGames"></ul>
+   </td>
+</tr>
+</table>
+
+<script>
+<!--
+connect_to_lobby();
+-->
+</script>
+
+</body>
+</html>
