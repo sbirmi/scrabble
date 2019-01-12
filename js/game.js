@@ -120,6 +120,7 @@ function processTurnMessage(msg) {
       state = ClientState.turn;
       buttons_disabled = false;
       turnKey = msg[2];
+      chat_game_message("Your turn");
 
       document.getElementById("popAudio").play();
    } else {
@@ -250,6 +251,7 @@ function sock_onmessage(event) {
       // just made a move and waitnig for confirmation
 
       if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD" || msg[0] == "EXCH-BAD") {
+         chat_game_message("Bad move");
          state = ClientState.turn;
          click_shuf_tiles();
          return;
@@ -271,6 +273,7 @@ function sock_onmessage(event) {
    // Commands that work in several state
    if (msg[0] == "GAME-OVER") {
       processGameOverMessage(msg);
+      chat_game_message("Game over");
 
    } else if (msg[0] == "CHAT-MSG") {
       var dt = new Date(0);

@@ -473,13 +473,13 @@ function setupBoard() {
          holder_div.appendChild(cell_design);
 
          if (style[r][c] == "tw") {
-            cell_design.innerHTML = "Triple Word Score";
+            cell_design.innerHTML = "Triple<br>Word<br>Score";
          } else if (style[r][c] == "dw") {
-            cell_design.innerHTML = "Double Word Score";
+            cell_design.innerHTML = "Double<br>Word<br>Score";
          } else if (style[r][c] == "tl") {
-            cell_design.innerHTML = "Triple Letter Score";
+            cell_design.innerHTML = "Triple<br>Letter<br>Score";
          } else if (style[r][c] == "dl") {
-            cell_design.innerHTML = "Double Letter Score";
+            cell_design.innerHTML = "Double<br>Letter<br>Score";
          }
 
          holder_div.setAttribute("row", r);
@@ -582,14 +582,34 @@ function chat_add_message(ts, sender, message) {
 
    var cell = row.insertCell(0);
    cell.innerHTML = "(" + ts + ")";
+   cell.style.verticalAlign = "top";
 
    var cell = row.insertCell(1);
    cell.innerHTML = sender + ":";
+   cell.style.verticalAlign = "top";
 
    var cell = row.insertCell(2);
    cell.innerHTML = message;
+   cell.style.verticalAlign = "top";
 
    row.scrollIntoView(false);
+}
+
+function chat_game_message(message) {
+   var dt = new Date();
+   var hours = dt.getHours();
+   var ampm = "AM";
+   if (hours > 12) {
+      hours -= 12;
+      ampm = "PM";
+   }
+   var minutes = dt.getMinutes();
+   minutes = minutes < 10 ? '0' + minutes : minutes;
+   var seconds = dt.getSeconds();
+   var seconds = seconds < 10 ? '0' + seconds : seconds;
+   var strTime = hours + ":" + minutes + ":" + seconds + " " + ampm;
+   
+   chat_add_message(strTime, "SERVER", message);
 }
 
 function show_connect_panel() {
