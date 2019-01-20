@@ -1,9 +1,16 @@
 #!/usr/bin/env python
 
+import argparse
+
 from datetime import datetime
 from flask import Flask, render_template
 from flask import send_from_directory
 
+# default http port
+DEFAULT_HTTP_PORT = 5050
+
+# default game server port (websocket port)
+DEFAULT_WS_PORT = 5051
 
 app = Flask( __name__ )
 
@@ -33,12 +40,36 @@ def mediaFile(path):
 
 @app.route('/game/<gid>')
 def game(gid):
-    return render_template("game.html", gid=gid)
+    return render_template("game.html", gid=gid, ws_port=ws_port)
 
 @app.route('/')
 def lobby():
-    return render_template("lobby.html")
+    return render_template("lobby.html", ws_port=ws_port)
+
+def parseArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--httpport", type=int,
+                        help="Listen port (default=%s)" %
+                             DEFAULT_HTTP_PORT,
+                        default=DEFAULT_HTTP_PORT)
+    parser.add_argument("-w", "--wsport", type=int,
+                        help="Listen port (default=%s)" %
+                             DEFAULT_WS_PORT,
+                        default=DEFAULT_WS_PORT)
+
+    args = parser.parse_args()
+    return args
+
+def main():
+    args = parseArgs()
+
+    global ws_port
+    ws_port = args.wsport
+
+    print "HTTP port=%d" % args.httpport
+    print "Websocket (server) port=%d" % ws_port
+    app.run(host="0.0.0.0", port=args.httpport, debug=True)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=True)
+    main()
 

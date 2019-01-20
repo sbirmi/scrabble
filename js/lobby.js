@@ -1,4 +1,3 @@
-var game_server_port = 5051;
 var domain = window.location.host.split(":")[0];
 var sock_url = "ws://" + domain + ":" + game_server_port + "/lobby";
 var sock = null;

@@ -1,5 +1,4 @@
 // For UI
-var game_server_port = 5051;
 var boardcell_size = 65;
 var tilewidth = 63;
 
