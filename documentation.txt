@@ -10,7 +10,9 @@ CLIENT -> SERVER:
       [ "HOST-BAD", <players>, <reason> ]
 
    SERVER -> CLIENT:
-      [ "GAME", <gameid>, completed=true/false, maxPlayers, [ <playername1>, <score1> ], [ <playername2>, <score2> ], ... ]
+      [ "GAME", <gameid>, completed=true/false, maxPlayers, turnIndex, tilesInBag,
+        [ <playername1>, <score1> ], [ <playername2>, <score2> ], ... ]
+        turnIndex is -1 if game hasn't started
 
 ------------------------------------------------
 
@@ -39,7 +41,7 @@ SERVER -> CLIENT:
    [ "BOARDTILES", [ "P", x, y ], [ "Q", x, y ], ]
 
 SERVER -> CLIENT:
-   [ "SCORE", [ <playername1>, <score1> ], [ [ <playername2>, <score2> ] ] ]
+   [ "SCORE", tilesInBag, [ <playername1>, <score1> ], [ [ <playername2>, <score2> ] ] ]
 
 SERVER -> CLIENT:
    [ "TURN", <playername>, <turn-key> ]

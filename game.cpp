@@ -123,7 +123,8 @@ Inst::generateResponse(const Handle& hdl, Json::Value json) {
 Json::Value
 Inst::get_score_json() {
    Json::Value respJson = jsonify("SCORE");
-   
+   respJson.append(Json::Value((unsigned int)tiles.size()));
+
    for (const auto& pl : players) {
       respJson.append(Json::Value(pl->name));
       respJson.append(jsonify(pl->score));
@@ -1112,6 +1113,12 @@ Inst::status() {
    json.append(Json::Value(gid));
    json.append(Json::Value(gameOver));
    json.append(Json::Value(maxPlayers));
+   if (maxPlayers == players.size()) {
+      json.append(Json::Value(turnIndex));
+   } else {
+      json.append(Json::Value(-1));
+   }
+   json.append(Json::Value((unsigned int)tiles.size()));
 
    for (const auto& pl : players) {
       Json::Value plsc;

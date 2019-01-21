@@ -581,7 +581,7 @@ function chat_add_message(ts, sender, message) {
    var row = tbody.insertRow(tbody.children.length);
 
    var cell = row.insertCell(0);
-   cell.innerHTML = "(" + ts + ")";
+   cell.innerHTML = ts;
    cell.style.verticalAlign = "top";
 
    var cell = row.insertCell(1);

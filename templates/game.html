@@ -63,20 +63,24 @@ body {
 
 .chatWindow {
    width: 800px;
-   height: 80px;
+   height: 90px;
    overflow: auto;
    overflow-y: auto;
    display: block;
-   font: 1.5em "Open Sans", sans-serif;
+   font: 1.3em "Open Sans", sans-serif;
+   background: white;
+   border: 1px solid;
 }
 
 .chatInput {
    width: 600px;
-   font: 1.5em "Open Sans", sans-serif;
+   font: 1.3em "Open Sans", sans-serif;
+   background: white;
+   border: 1px solid;
 }
 
-.chatSend {
-   font: 1.5em "Open Sans", sans-serif;
+.text {
+   font: 1.3em "Open Sans", sans-serif;
 }
 
 .tile {
@@ -262,6 +266,13 @@ body {
 <!-- Chat window -->
 <table id="chatPanelUi" border="0px" align="center">
 <tr>
+   <td>
+      <span class="text">
+         Tiles in bags: <span id="tilesInBagUi"></span>
+      </span>
+   </td>
+</tr>
+<tr>
    <td align=center>
       <table id="chatWindow">
       <tbody class="chatWindow">
@@ -271,9 +282,9 @@ body {
 </tr>
 <tr>
    <td align=center>
-      <span class="chatSend">CHAT</span>
+      <span class="text">CHAT</span>
       <input id="chatInput" type=text class="chatInput" onkeypress="chatInput_keypress(event);">
-      <input id="chatSend" class="chatSend" type=button value="SEND" onclick="send_chat_message();">
+      <input id="chatSend" class="text" type=button value="SEND" onclick="send_chat_message();">
    </td>
 </tr>
 </table>

@@ -3,6 +3,12 @@ var sock_url = "ws://" + domain + ":" + game_server_port + "/lobby";
 var sock = null;
 var connected = false;
 
+// General UI
+function ui_text(text) {
+   var ui = document.createTextNode(text);
+   return ui;
+}
+
 // Host
 function lobby_host() {
    var pl_count_ui = document.getElementById("host_player_count_ui");
@@ -46,7 +52,8 @@ function all_list_remove_gameid(gid) {
    list_remove_gameid(document.getElementById("completedGames"), gid);
 }
 
-function add_game_info(gid, completed, max_players, playerscore) {
+function add_game_info(gid, completed, max_players, turn_index,
+                       tiles_in_bag, playerscore) {
    all_list_remove_gameid(gid);
 
    var list = null;
@@ -58,29 +65,41 @@ function add_game_info(gid, completed, max_players, playerscore) {
       list = document.getElementById("waitingGames");
    }
 
-   var li = document.createElement("li");
-   li.setAttribute("gid", gid);
-   var text = "#" + gid;
-   if (max_players) {
-      text += " (" + max_players + " players)"
-
-      if (playerscore) {
-         for (var i=0; i<playerscore.length; ++i) {
-            if (i==0) {
-               text += " - ";
-            } else {
-               text += ", ";
-            }
-            text += playerscore[i][0] + " (" + playerscore[i][1] + ")"
-         }
-      }
-   }
-
    var link = document.createElement("a");
-   link.appendChild(document.createTextNode(text));
    link.href = "/game/" + gid;
    link.target = "_blank";
+
+   link.appendChild(ui_text("#" + gid));
+
+   if (max_players) {
+      link.appendChild(ui_text(" - " + max_players + " players"));
+      link.appendChild(ui_text(" - " + tiles_in_bag + " tiles in bag"));
+   }
+
+   var li = document.createElement("li");
+   li.setAttribute("gid", gid);
    li.appendChild(link);
+   li.appendChild(document.createElement("br"));
+
+   if (playerscore) {
+      var scoreline_ui = document.createElement("span");
+
+      for (var i=0; i<playerscore.length; ++i) {
+         if (i>0) {
+            scoreline_ui.appendChild(ui_text(", "));
+         }
+         var plstr = playerscore[i][0] + " (" + playerscore[i][1] + ")"
+         if (turn_index == i) {
+            var hl = document.createElement("b");
+            hl.appendChild(ui_text(plstr));
+            scoreline_ui.appendChild(hl);
+         } else {
+            scoreline_ui.appendChild(ui_text(plstr));
+         }
+      }
+
+      li.appendChild(scoreline_ui);
+   }
 
    // Insert in reverse descending order
    for (var i=0; i<list.children.length; ++i) {
@@ -104,19 +123,23 @@ function show_warning_bar(state, msg) {
 function lobby_recv(msg) {
    console.log(msg);
 
-   // [ "GAME", <gameid>, completed=true/false, maxPlayers, [ <playername1>, <score1> ], [ <playername2>, <score2> ], ... ]
+   // [ "GAME", <gameid>, completed=true/false, maxPlayers, turnIndex,
+   //   [ <playername1>, <score1> ], [ <playername2>, <score2> ], ... ]
    if (msg[0] == "GAME") {
       var gid = msg[1];
       var completed = msg[2];
       var max_players = msg[3];
+      var turn_index = msg[4];
+      var tiles_in_bag = msg[5];
       var playerscore = [];
 
-      for (var i=4; i<msg.length; ++i) {
+      for (var i=6; i<msg.length; ++i) {
          var pl_score = msg[i];
          playerscore.push(pl_score);
       }
 
-      add_game_info(gid, completed, max_players, playerscore);
+      add_game_info(gid, completed, max_players, turn_index,
+                    tiles_in_bag, playerscore);
    }
 }
 

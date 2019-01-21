@@ -68,10 +68,13 @@ function processPlayOkayMessage(msg) {
 function processScoreMessage(scoreMsg) {
    // Add to local playerScoreList
    console.log(scoreMsg);
+   var tiles_in_bag = scoreMsg[1];
+   document.getElementById("tilesInBagUi").innerHTML = tiles_in_bag;
+
    var j = 0;
    // First token is message is "SCORE" so
    // start from 1
-   for (var i=1; i<scoreMsg.length; i+=2) {
+   for (var i=2; i<scoreMsg.length; i+=2) {
       if (playerScoreList.length <= j) {
          // Add a UI element to show score
          // for the newly discovered player
@@ -124,6 +127,7 @@ function processTurnMessage(msg) {
 
       document.getElementById("popAudio").play();
    } else {
+      chat_game_message(msg[1] + "'s turn");
       state = ClientState.wait_turn;
       turnKey = "";
    }
