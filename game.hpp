@@ -137,10 +137,15 @@ private:
    void start_game(HandleResponseList &hrl);
    // pass indicates if the last move was a pass
    void next_turn(HandleResponseList &hrl, bool pass);
-   int play_word_score(const PlayMove &,
-                       bool wordAlongRow);
+   std::string play_word_score(HandleResponseList& hrl,
+                               const Handle& hdl, 
+                               const PlayMove &,
+                               bool wordAlongRow,
+                               int *score);
    // returns negative value if invalid word
-   int play_score(const std::vector<PlayMove>&);
+   bool play_score(HandleResponseList& hrl,
+                   const Handle& hdl,
+                   const std::vector<PlayMove>&);
    std::string issue_tiles(unsigned int plIdx,
                            HandleResponseList& hrl);
    bool exchange_tiles(std::string,

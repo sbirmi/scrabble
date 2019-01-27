@@ -50,14 +50,14 @@ SERVER -> CLIENT:
       [ "PASS", <turn-key> ]
 
       SERVER -> CLIENT:
-         [ "PASS-OKAY" ]
+         [ "PASS-OKAY" ] -- broadcast to all
          [ "PASS-BAD", <reason> ]
 
    CLIENT -> SERVER:
       [ "PLAY", <turn-key>, [ "A", r, c ], [ "b", r, c ], ]
 
       SERVER -> CLIENT:
-         [ "PLAY-OKAY", <letters> ]     // TODO (tell all clients for player to delete keys)
+         [ "PLAY-OKAY", <letters>, <word made>, <score> ] -- broadcast to all
          [ "PLAY-BAD", <reason> ]
             - out of turn
             - bad turnkey
@@ -68,7 +68,8 @@ SERVER -> CLIENT:
       [ "EXCH", <turn-key>, <letters> ]
 
       SERVER -> CLIENT:
-         [ "EXCH-OKAY", "letters" ]
+         [ "EXCH-OKAY", "letters" ] -- to main player
+            [ "EXCH-OKAY" ] -- to all other players
          [ "EXCH-BAD", <reason> ]
             - such as out of turn
 

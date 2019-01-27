@@ -7,6 +7,12 @@ function processGameOverMessage(msg) {
 }
 
 function processExchOkayMessage(msg) {
+   if (myName != currTurnName) {
+      chat_game_message(currTurnName + " exchanged letters");
+      return;
+   } else {
+      chat_game_message("Letters exchanged");
+   }
    // move all the tiles back to the rack
    click_shuf_tiles();
 
@@ -30,15 +36,17 @@ function processExchOkayMessage(msg) {
    }
 }
 
+function processPassOkayMessage(msg) {
+   chat_game_message(currTurnName + " passed");
+}
+
 function processPlayOkayMessage(msg) {
-   console.log("processPlayOkayMessage"); // TODO
-   console.log(handTilesUi); // TODO
-   console.log(racktiles); // TODO
+   if (myName != currTurnName) {
+      chat_game_message(currTurnName + " played " + msg[2] + " (" + msg[3] + ")");
+      return;
+   }
    // move all the tiles back to the rack
    click_shuf_tiles();
-   console.log("processPlayOkayMessage: post shuffle"); // TODO
-   console.log(handTilesUi); // TODO
-   console.log(racktiles); // TODO
 
    // Remove the letter from rack if present there.
    // tile.remove() is sufficient for tiles on the
@@ -59,10 +67,7 @@ function processPlayOkayMessage(msg) {
          }
       }
    }
-
-   console.log("processPlayOkayMessage: end"); // TODO
-   console.log(handTilesUi); // TODO
-   console.log(racktiles); // TODO
+   chat_game_message("Word made '" + msg[2] + "' score " + msg[3]);
 }
 
 function processScoreMessage(scoreMsg) {
@@ -131,6 +136,7 @@ function processTurnMessage(msg) {
       state = ClientState.wait_turn;
       turnKey = "";
    }
+   currTurnName = msg[1];
 
    // Enabled/disable move buttons
    document.getElementById("exchbutton").disabled = buttons_disabled;
@@ -255,7 +261,7 @@ function sock_onmessage(event) {
       // just made a move and waitnig for confirmation
 
       if (msg[0] == "PLAY-BAD" || msg[0] == "PASS-BAD" || msg[0] == "EXCH-BAD") {
-         chat_game_message("Bad move");
+         chat_game_message("Bad move: " + msg[1]);
          state = ClientState.turn;
          click_shuf_tiles();
          return;
@@ -269,6 +275,7 @@ function sock_onmessage(event) {
          return;
       } else if (msg[0] == "PASS-OKAY") {
          state = ClientState.wait_turn;
+         processPassOkayMessage(msg);
          return;
       }
 
@@ -310,6 +317,7 @@ function sock_onmessage(event) {
 
    } else if (msg[0] == "PASS-OKAY") {
       state = ClientState.wait_turn;
+      processPassOkayMessage(msg);
       return;
 
    }

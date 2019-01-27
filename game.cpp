@@ -227,11 +227,14 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
    broadcast_turn_messages(hrl);
 }
 
-int
-Inst::play_word_score(const PlayMove &pm,
-                      bool wordAlongRow) {
+std::string
+Inst::play_word_score(HandleResponseList& hrl,
+                      const Handle& hdl,
+                      const PlayMove &pm,
+                      bool wordAlongRow,
+                      int *score) {
    std::string word = "";
-   int score = 0;
+   *score = 0;
 
    int minC=pm.col, maxC = pm.col;
    int minR=pm.row, maxR=pm.row;
@@ -268,7 +271,7 @@ Inst::play_word_score(const PlayMove &pm,
              << " word=" << word << std::endl;
 
    if (word.size() == 1) {
-      return 0;
+      return "";
    }
 
    std::string uppercaseWord = word;
@@ -279,7 +282,9 @@ Inst::play_word_score(const PlayMove &pm,
    if (!wl->is_valid(uppercaseWord)) {
       // word not in the dictionary
       std::cerr << __FUNCTION__ << " word isn't in the word list" << std::endl;
-      return -1;
+      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "invalid word '" + uppercaseWord + "'")));
+      *score = -1;
+      return "";
    }
 
    // it's a valid word. Calculate the score for it
@@ -289,25 +294,28 @@ Inst::play_word_score(const PlayMove &pm,
          char letter = tempBoardRC[r][c];
          bool is_new = is_new_tile(r, c);
 
-         score += letterScore[letter] * (is_new ? letterMultiplier[r][c] : 1);
+         *score += letterScore[letter] * (is_new ? letterMultiplier[r][c] : 1);
          wordMult *= is_new ? wordMultiplier[r][c] : 1;
       }
    }
 
-   score *= wordMult;
+   *score *= wordMult;
 
-   std::cout << __FUNCTION__ << " word=" << word << " score=" << score << std::endl;
-   return score;
+   std::cout << __FUNCTION__ << " word=" << word << " score=" << *score << std::endl;
+   return word;
 }
 
-int
-Inst::play_score(const std::vector<PlayMove>& play) {
+bool
+Inst::play_score(HandleResponseList& hrl,
+                 const Handle& hdl,
+                 const std::vector<PlayMove>& play) {
    // Verify each character played in the move were in the hand
    std::string tilesplayed;
    for (const auto& pm : play) {
       if (pm.letter == ' ') {
          std::cerr << __FUNCTION__ << " blank letter can't be assigned" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "unassigned blank letter")));
+         return false;
       }
       tilesplayed.push_back(pm.letter);
    }
@@ -323,13 +331,14 @@ Inst::play_score(const std::vector<PlayMove>& play) {
       } else {
          // illegal character
          std::cerr << __FUNCTION__ << " non-alphabet letter played" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "non-alphabet letter")));
+         return false;
       }
 
       if (idx == std::string::npos) {
-         // playing a character that's not in the hand
-         std::cerr << __FUNCTION__ << " playing a tile that's not in player's hand" << std::endl;
-         return -1;
+         std::cerr << __FUNCTION__ << " unsing letter not in hand" << std::endl;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "using letter not in hand")));
+         return false;
       }
 
       handtiles[idx] = '*';
@@ -347,7 +356,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
       if (tempBoardRC[pm.row][pm.col] != ' ') {
          // can't place a tile on top of an existing tiles
          std::cerr << __FUNCTION__ << " playing a new tile on an existing tile" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "improper placement of tile")));
+         return false;
       }
 
       tempBoardRC[pm.row][pm.col] = pm.letter;
@@ -361,7 +371,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
              play[i].col == play[j].col) {
             // placing more than 1 tile on the same spot
             std::cerr << __FUNCTION__ << " two tiles are played on the same spot" << std::endl;
-            return -1;
+            hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "two tiles played on the same spot")));
+            return false;
          }
       }
    }
@@ -390,7 +401,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
       if (!samerow && !samecol) {
          // played tiles are not in one row
          std::cerr << __FUNCTION__ << " played tiles are not in the same row or the same column" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "played tiles must be in the same row or column")));
+         return false;
       }
    }
 
@@ -408,7 +420,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
       if (!boardCenterOccupied) {
          // first move is off-center
          std::cerr << __FUNCTION__ << " first turn must cover center spot" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "first turn must cover the center")));
+         return false;
       }
 
 //      if (play.size() == 1) {
@@ -431,7 +444,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
 
       if (!connects) {
          std::cerr << __FUNCTION__ << " new word doesn't touch old tiles" << std::endl;
-         return -1;
+         hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "played word must touch existing tiles")));
+         return false;
       }
    }
 
@@ -446,7 +460,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
          for (unsigned int col=minCol; col<=maxCol; ++col) {
             if (tempBoardRC[minRow][col] == ' ') {
                std::cerr << __FUNCTION__ << " there is a gap between the tiles played" << std::endl;
-               return -1;
+               hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "improper placement of tiles")));
+               return false;
             }
          }
       }
@@ -455,7 +470,8 @@ Inst::play_score(const std::vector<PlayMove>& play) {
          for (unsigned int row=minRow; row<=maxRow; ++row) {
             if (tempBoardRC[row][minCol] == ' ') {
                std::cerr << __FUNCTION__ << " there is a gap between the tiles played" << std::endl;
-               return -1;
+               hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "improper placement of tiles")));
+               return false;
             }
          }
       }
@@ -464,21 +480,30 @@ Inst::play_score(const std::vector<PlayMove>& play) {
    // calculate score while checking the words are valid
    bool first = true;
    unsigned int total_score = 0;
+   std::string word = "";
+   std::string longest_word = "";
+
    for (const auto& pm : play) {
       int word_score;
 
-      word_score = play_word_score(pm, !samerow);
+      word = play_word_score(hrl, hdl, pm, !samerow, &word_score);
       if (word_score < 0) {
          // invalid word
-         return -1;
+         return false;
+      }
+      if (word.length() > longest_word.length()) {
+         longest_word = word;
       }
       total_score += word_score;
 
       if (first) {
-         word_score = play_word_score(pm, samerow);
+         word = play_word_score(hrl, hdl, pm, samerow, &word_score);
          if (word_score < 0) {
             // invalid word
-            return -1;
+            return false;
+         }
+         if (word.length() > longest_word.length()) {
+            longest_word = word;
          }
          total_score += word_score;
 
@@ -490,7 +515,6 @@ Inst::play_score(const std::vector<PlayMove>& play) {
       // We have a bingo at our hand!
       total_score += 50;
    }
-
 
    // the move was successful. copy tempBoardRC/tempBoardScoreRC
    // to boardRC/boardscoreRC
@@ -508,6 +532,15 @@ Inst::play_score(const std::vector<PlayMove>& play) {
          players[turnIndex]->hand.push_back(c);
    }
 
+
+   std::string letters_played = "";
+   for (auto& pm : play) {
+      letters_played.push_back(pm.letter);
+   }
+   broadcast_json_message(hrl,
+                          jsonify("PLAY-OKAY", letters_played,
+                                  longest_word, total_score));
+   players[turnIndex]->score += total_score;
    return total_score;
 }
 
@@ -581,10 +614,8 @@ Inst::exchange_tiles(std::string _removed,
 
    // remove letters from hand
    players[turnIndex]->hand = handtiles;
-   for (auto const& hdlClient : players[turnIndex]->clients) {
-      hrl.push_back(generateResponse(hdlClient.first,
-                                     jsonify("EXCH-OKAY", _removed)));
-   }
+   broadcast_json_message(hrl, jsonify("EXCH-OKAY", _removed),
+                          jsonify("EXCH-OKAY"));
 
    // issue new tiles
    issue_tiles(turnIndex, hrl);
@@ -849,7 +880,8 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value& json,
    }
 
    // Player turnIndex wants to pass
-   hrl.push_back(generateResponse(hdl, jsonify("PASS-OKAY")));
+   broadcast_json_message(hrl, jsonify("PASS-OKAY"));
+
    next_turn(hrl, true); 
    return false;
 }
@@ -939,29 +971,19 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value& cmdJson,
    // TODO check that provided letters are a-zA-Z
 
    std::vector<PlayMove> play;
-   std::string word_played;
    for (unsigned int i=2; i<cmdJson.size(); ++i) {
       PlayMove pm = { cmdJson[i][0].asString()[0],
                       cmdJson[i][1].asUInt(),
                       cmdJson[i][2].asUInt() };
       play.push_back(pm);
-      word_played.push_back(cmdJson[i][0].asString()[0]);
    }
 
-   int score = play_score(play);
-   if (score < 0) {
-      std::cerr << "out of turn: play_score() returned negative score" << std::endl;
-      hrl.push_back(generateResponse(hdl, jsonify("PLAY-BAD", "bad move")));
+   bool success = play_score(hrl, hdl, play);
+   if (!success) {
       return false;
    }
 
    ++wordsMade;
-
-   // Player turnIndex wants to pass
-   for (const auto& hdlClient : players[turnIndex]->clients) {
-      hrl.push_back(generateResponse(hdlClient.first,
-                                     jsonify("PLAY-OKAY", word_played)));
-   }
 
    // notify everyone that new tiles are appearing on the board
    Json::Value boardtiles = jsonify("BOARDTILES");
@@ -974,7 +996,6 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value& cmdJson,
    issue_tiles(turnIndex, hrl);
 
    // advertise score to everyone
-   players[turnIndex]->score += score;
    broadcast_score_messages(hrl);
 
    next_turn(hrl, false); 

@@ -61,6 +61,7 @@ var blankLetterChgTimer = null;
 // For the game protocol
 var myName = "";
 var turnKey = "";
+var currTurnName = "";
 
 // Client state
 var ClientState = Object.freeze({

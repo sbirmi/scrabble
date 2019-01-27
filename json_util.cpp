@@ -40,3 +40,13 @@ jsonify(const char letter, unsigned int row, unsigned int col) {
    json.append(Json::Value(col));
    return json;
 }
+
+Json::Value jsonify(const std::string& s1, const std::string& s2,
+                    const std::string& s3, const unsigned int i) {
+   Json::Value json = jsonify(s1);
+   json.append(Json::Value(s2));
+   json.append(Json::Value(s3));
+   json.append(Json::Value(i));
+   return json;
+}
+

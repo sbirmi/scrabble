@@ -12,5 +12,7 @@ Json::Value jsonify(const std::string&, const std::string&,
                     const std::string&);
 Json::Value jsonify(const char letter, unsigned int row,
                     unsigned int col);
+Json::Value jsonify(const std::string&, const std::string&,
+                    const std::string&, const unsigned int);
 
 #endif
