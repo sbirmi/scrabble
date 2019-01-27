@@ -9,6 +9,7 @@
 #include "conn.hpp"
 #include "game.hpp"
 #include "word_list.hpp"
+#include "storage.hpp"
 
 typedef std::map<GameId, Game::Inst *> GameById;
 typedef std::set<Handle,std::owner_less<Handle> > HandleSet;
@@ -20,6 +21,7 @@ class Inst {
 private:
    GameId nextGameId;
    const WordList *wl;
+   Storage::Inst *storage;
    Json::Reader *jsonReader;
    Json::FastWriter *jsonWriter;
 
@@ -37,7 +39,7 @@ private:
    void broadcast_json_message(HandleResponseList &hrl, const Json::Value& json);
 
 public:
-   Inst(const WordList *_wl);
+   Inst(const WordList *_wl, const std::string);
    void handle_appear(const Handle &hdl, const std::string);
    void handle_disappear(const Handle &hdl);
    HandleResponseList process_msg(

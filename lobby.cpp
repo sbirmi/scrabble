@@ -100,7 +100,7 @@ Inst::process_lobby_cmd_host(const Handle& hdl, const Json::Value& json, HandleR
    GameId gid = nextGameId++;
    std::cout << "Hosting gid=" << gid << " for max players " << max_players << std::endl;
 
-   Game::Inst *gi = new Game::Inst(gid, wl, max_players, jsonReader, jsonWriter);
+   Game::Inst *gi = new Game::Inst(gid, wl, storage, max_players, jsonReader, jsonWriter);
    gameById[gid] = gi;
 
    // notify all clients that the game is hosted
@@ -193,9 +193,10 @@ Inst::process_msg(
    return hrl;
 }
 
-Inst::Inst(const WordList *_wl) :
+Inst::Inst(const WordList *_wl, const std::string _dbfile) :
       nextGameId(1),
       wl(_wl),
+      storage(new Storage::Inst(_dbfile)),
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
    std::cout << "Lobby created" << std::endl;

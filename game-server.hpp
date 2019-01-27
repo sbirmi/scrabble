@@ -46,7 +46,7 @@ struct action {
 
 class broadcast_server {
    public:
-      broadcast_server(const WordList *);
+      broadcast_server(const WordList *, std::string);
       void run(uint16_t port);
       void on_open(connection_hdl hdl);
       void on_close(connection_hdl hdl);

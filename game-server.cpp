@@ -1,8 +1,9 @@
 #include "game-server.hpp"
 
 
-broadcast_server::broadcast_server(const WordList *_wl) {
-   lobby = new Lobby::Inst(_wl);
+broadcast_server::broadcast_server(const WordList *_wl, const std::string _dbfile) {
+   lobby = new Lobby::Inst(_wl, _dbfile);
+
    // Initialize Asio Transport
    m_server.init_asio();
 

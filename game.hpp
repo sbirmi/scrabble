@@ -9,6 +9,7 @@
 #include "json_util.hpp"
 #include "conn.hpp"
 #include "word_list.hpp"
+#include "storage.hpp"
 
 typedef unsigned int GameId;
 
@@ -106,6 +107,7 @@ class Inst {
 private:
    GameId gid;
    const WordList *wl;
+   Storage::Inst *storage;
    const unsigned int maxPlayers;
    std::vector<Player *> players;
    bool gameOver;
@@ -197,7 +199,9 @@ private:
          const Handle& hdl, Json::Value json);
 
 public:
-   Inst(unsigned int _gid, const WordList *, const unsigned int,
+   Inst(unsigned int _gid, const WordList *,
+        Storage::Inst *,
+        const unsigned int,
         Json::Reader *, Json::FastWriter *);
 
    void handle_appear(const Handle &hdl);

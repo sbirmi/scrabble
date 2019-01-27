@@ -109,7 +109,7 @@ BoardScores:
 Moves:
    [ <mid:autoincrement>, <gid>, <pid>,
      moveType (0 to 2; 0-pass, 1-exch, 2-play),
-     std::string moveDetail,
+     std::string moveDetail (json),
      score,
    ]
 

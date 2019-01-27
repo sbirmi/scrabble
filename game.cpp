@@ -1028,11 +1028,13 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json,
 }
 
 Inst::Inst(unsigned int _gid, const WordList *_wl,
+           Storage::Inst *_storage,
            const unsigned int _maxPlayers,
            Json::Reader *_jsonReader,
            Json::FastWriter *_jsonWriter) :
       gid(_gid),
       wl(_wl),
+      storage(_storage),
       maxPlayers(_maxPlayers),
       gameOver(false),
       wordsMade(0),

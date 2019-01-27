@@ -3,6 +3,9 @@ all: game-server
 CPPFLAGS=-Wall -I/usr/include/jsoncpp -ggdb
 LDFLAGS=-ggdb
 
+storage.o: storage.cpp storage.hpp
+	g++ ${CPPFLAGS} -c storage.cpp
+
 game-server.o: game-server.cpp game-server.hpp game.hpp
 	g++ ${CPPFLAGS} -c game-server.cpp
 
@@ -21,7 +24,7 @@ lobby.o: lobby.cpp lobby.hpp conn.hpp
 json_util.o: json_util.cpp json_util.hpp
 	g++ ${CPPFLAGS} -c json_util.cpp
 
-game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_util.o
+game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_util.o storage.o
 	g++ \
 		${LDFLAGS} \
 		broadcast_server.o \
@@ -30,7 +33,8 @@ game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_ut
 		word_list.o \
 		lobby.o \
 		json_util.o \
-		-lboost_system -lboost_thread -lpthread -ljsoncpp \
+		storage.o \
+		-lboost_system -lboost_thread -lpthread -ljsoncpp -lsqlite3 \
 		-o game-server
 
 

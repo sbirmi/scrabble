@@ -9,15 +9,15 @@
 #include <boost/thread/condition_variable.hpp>*/
 
 int main(int argc, char *argv[]) {
-   if (argc != 2) {
-      std::cout << "Usage: game-server <portnumber>" << std::endl << std::endl;
+   if (argc != 3) {
+      std::cout << "Usage: game-server <portnumber> <sqlite>" << std::endl << std::endl;
       return -1;
    }
 
    WordList *wl = new WordList("wordlist.txt");
 
    try {
-      broadcast_server server_instance(wl);
+      broadcast_server server_instance(wl, argv[2]);
 
       // Start a thread to run the processing loop
       thread t(bind(&broadcast_server::process_messages,&server_instance));
