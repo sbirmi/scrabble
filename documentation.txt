@@ -86,3 +86,30 @@ CLIENT -> SERVER:
 
 
 ------------------------------------------------
+
+[sqlite3]
+
+Games:
+   [ gid, maxPlayers, turnIndex, wordsMade, passesMade, gameOver, tiles ]
+
+Players:
+   [ <pid:autoincrement>, gid, playerindex (0 to 3), playername, secretkey,
+     score,
+     hand,
+     state,
+     turnKey,
+     endScoreAdj ]
+
+BoardTiles:
+   [ <bid:autoincrement>, gid, row, col, letter ]
+
+BoardScores:
+   [ <sid:autoincrement>, gid, row, col, score ]
+
+Moves:
+   [ <mid:autoincrement>, <gid>, <pid>,
+     moveType (0 to 2; 0-pass, 1-exch, 2-play),
+     std::string moveDetail,
+     score,
+   ]
+
