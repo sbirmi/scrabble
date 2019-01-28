@@ -12,7 +12,7 @@ game-server.o: game-server.cpp game-server.hpp game.hpp
 broadcast_server.o: broadcast_server.cpp game-server.hpp
 	g++ ${CPPFLAGS} -c broadcast_server.cpp
 
-game.o: game.cpp game.hpp conn.hpp
+game.o: game.cpp game.hpp conn.hpp storage.hpp
 	g++ ${CPPFLAGS} -c game.cpp
 
 word_list.o: word_list.cpp word_list.hpp

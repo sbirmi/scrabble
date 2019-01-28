@@ -171,8 +171,12 @@ void
 Inst::next_turn(HandleResponseList &hrl, bool pass) {
    if (pass) {
       ++passesMade;
+      storage->update_game_passes_made(gid, passesMade);
    } else {
-      passesMade = 0;
+      if (passesMade != 0) {
+         passesMade = 0;
+         storage->update_game_passes_made(gid, passesMade);
+      }
    }
 
    // Check if the number of passes equals N + 1, i.e.,
@@ -184,8 +188,10 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
       bool exhaustedTiles = players[turnIndex]->hand == "";
 
       gameOver = true;
+      storage->update_game_over(gid);
       for (const auto& pl : players) {
          pl->state = game_over;
+         storage->update_player_state(pl->pid, pl->state);
       }
 
       if (exhaustedTiles) {
@@ -196,6 +202,7 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
 
       // Subtracts points from all other players' hand
       // and add it to us
+      int accumulated_score = 0;
       for (const auto& pl : players) {
          int this_player_score = 0;
          for (const auto& letter : pl->hand) {
@@ -207,10 +214,17 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
                    << this_player_score << std::endl;
          pl->score -= this_player_score;
 
-         if (exhaustedTiles) {
-            players[turnIndex]->score += this_player_score;
-         }
+         storage->update_player_end_adj_score(pl->pid, this_player_score);
+         storage->update_player_score(pl->pid, pl->score);
+
+         accumulated_score += this_player_score;
       }
+      if (exhaustedTiles) {
+         players[turnIndex]->score += accumulated_score;
+         storage->update_player_end_adj_score(players[turnIndex]->pid, accumulated_score);
+         storage->update_player_score(players[turnIndex]->pid, players[turnIndex]->score);
+      }
+
       broadcast_score_messages(hrl);
       broadcast_json_message(hrl, jsonify("GAME-OVER"));
       return;
@@ -218,11 +232,19 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
 
 
    turnIndex = (turnIndex + 1) % maxPlayers;
+   storage->update_game_turn_index(gid, turnIndex);
+
    for (auto const& pl : players) {
-      pl->state = await_turn;
+      if (pl->state != await_turn) {
+         pl->state = await_turn;
+         storage->update_player_state(pl->pid, pl->state);
+      }
    }
    players[turnIndex]->turnkey = randomString();
+   storage->update_player_turnkey(players[turnIndex]->pid, players[turnIndex]->turnkey);
+
    players[turnIndex]->state = turn;
+   storage->update_player_state(players[turnIndex]->pid, turn);
 
    broadcast_turn_messages(hrl);
 }
@@ -308,7 +330,8 @@ Inst::play_word_score(HandleResponseList& hrl,
 bool
 Inst::play_score(HandleResponseList& hrl,
                  const Handle& hdl,
-                 const std::vector<PlayMove>& play) {
+                 const std::vector<PlayMove>& play,
+                 const std::string &strJsonMove) {
    // Verify each character played in the move were in the hand
    std::string tilesplayed;
    for (const auto& pm : play) {
@@ -516,6 +539,16 @@ Inst::play_score(HandleResponseList& hrl,
       total_score += 50;
    }
 
+   // Update Moves
+   storage->add_player_move_play(gid, players[turnIndex]->pid,
+         strJsonMove, longest_word, total_score);
+
+   for (const auto& pm : play) {
+      storage->add_board_tile(gid, pm.row, pm.col,
+                              tempBoardRC[pm.row][pm.col],
+                              tempBoardScoreRC[pm.row][pm.col]);
+   }
+
    // the move was successful. copy tempBoardRC/tempBoardScoreRC
    // to boardRC/boardscoreRC
    for (unsigned r=0; r<15; ++r) {
@@ -532,7 +565,6 @@ Inst::play_score(HandleResponseList& hrl,
          players[turnIndex]->hand.push_back(c);
    }
 
-
    std::string letters_played = "";
    for (auto& pm : play) {
       letters_played.push_back(pm.letter);
@@ -541,6 +573,9 @@ Inst::play_score(HandleResponseList& hrl,
                           jsonify("PLAY-OKAY", letters_played,
                                   longest_word, total_score));
    players[turnIndex]->score += total_score;
+   storage->update_player_score(players[turnIndex]->pid,
+                                players[turnIndex]->score);
+
    return total_score;
 }
 
@@ -548,14 +583,6 @@ void
 Inst::start_game(HandleResponseList &hrl) {
    // pick who will start the game
    std::cout << __PRETTY_FUNCTION__ << std::endl;
-
-   std::mt19937 rng;
-   rng.seed(std::random_device()());
-   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
-   turnIndex = dist6(rng);
-   std::cout << "turnIndex = " << turnIndex << std::endl;
-
-   std::cout << tiles.size() << std::endl;
 
    // issue tiles
    for (unsigned int plIdx=0; plIdx < maxPlayers; ++plIdx) {
@@ -576,6 +603,9 @@ Inst::issue_tiles(unsigned int plIdx, HandleResponseList& hrl) {
       players[plIdx]->hand.push_back(letter);
       tiles.pop_back();
    }
+
+   storage->update_player_hand(players[plIdx]->pid, players[plIdx]->hand);
+   storage->update_game_tiles(gid, tiles);
 
    for (auto const& hdlClient : players[plIdx]->clients) {
       hrl.push_back(
@@ -614,6 +644,8 @@ Inst::exchange_tiles(std::string _removed,
 
    // remove letters from hand
    players[turnIndex]->hand = handtiles;
+   storage->add_player_move_exch(gid, players[turnIndex]->pid, removed);
+
    broadcast_json_message(hrl, jsonify("EXCH-OKAY", _removed),
                           jsonify("EXCH-OKAY"));
 
@@ -623,6 +655,7 @@ Inst::exchange_tiles(std::string _removed,
    // add removed tiles to the bag
    tiles += removed;
    shuffle_bag();
+   storage->update_game_tiles(gid, tiles);
 
    return true;
 }
@@ -830,14 +863,21 @@ Inst::process_cmd_join(const Handle& hdl, const Json::Value &json,
       // Join as a new player
       int plIdx = players.size();
       handleMode[hdl] = plIdx;
-      players.push_back(new Player(json[1].asString(), json[2].asString(), wait_for_more_players));
+
+      unsigned int pid = storage->add_player(gid, plIdx,
+            json[1].asString(), json[2].asString(),
+            wait_for_more_players);
+      std::cout << "Storage player id = " << pid << std::endl;
+
+      players.push_back(new Player(pid, json[1].asString(), json[2].asString(),
+                                   wait_for_more_players));
       players[plIdx]->maybeAddClient(new Client(hdl, wait_for_more_players));
       hrl.push_back(generateResponse(hdl, jsonify("JOIN-OKAY")));
+
 
       // announce to the world that a new player joined
       broadcast_score_messages(hrl);
 
-      std::cout << "here" << std::endl;
       if (players.size() == maxPlayers) {
          // start the game
          start_game(hrl);
@@ -878,6 +918,8 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value& json,
       hrl.push_back(generateResponse(hdl, jsonify("PASS-BAD", "bad turnkey")));
       return false;
    }
+
+   storage->add_player_move_pass(gid, players[turnIndex]->pid);
 
    // Player turnIndex wants to pass
    broadcast_json_message(hrl, jsonify("PASS-OKAY"));
@@ -978,12 +1020,13 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value& cmdJson,
       play.push_back(pm);
    }
 
-   bool success = play_score(hrl, hdl, play);
+   bool success = play_score(hrl, hdl, play, stringify(cmdJson));
    if (!success) {
       return false;
    }
 
    ++wordsMade;
+   storage->update_game_words_made(gid, wordsMade);
 
    // notify everyone that new tiles are appearing on the board
    Json::Value boardtiles = jsonify("BOARDTILES");
@@ -1046,6 +1089,13 @@ Inst::Inst(unsigned int _gid, const WordList *_wl,
    tiles = "AAAAAAAAABBCCDDDDEEEEEEEEEEEEFFGGGHHIIIIIIIIIJKLLLLMMNNNNNNOOOOOOOOPPQRRRRRRSSSSTTTTTTUUUUVVWWXYYZ  ";
    assert(tiles.length() == 100);
    shuffle_bag();
+
+   std::mt19937 rng;
+   rng.seed(std::random_device()());
+   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, maxPlayers-1);
+   turnIndex = dist6(rng);
+
+   storage->add_game(gid, maxPlayers, turnIndex, tiles);
 
    for (unsigned int r=0; r<15; ++r) {
       for (unsigned int c=0; c<15; ++c) {

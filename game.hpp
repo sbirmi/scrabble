@@ -81,6 +81,7 @@ typedef std::map<const Handle, Client*, std::owner_less<Handle>> HandleClient;
 class Player {
    friend class Inst;
 private:
+   unsigned int pid;
    HandleClient clients;
    std::string name;
    int score = 0;
@@ -93,10 +94,11 @@ private:
    std::string turnkey;
 
 public:
-   Player(std::string _name,
+   Player(unsigned int _pid,
+          std::string _name,
           std::string _passwd,
           enum ClientState _state) :
-      name(_name), passwd(_passwd),
+      pid(_pid), name(_name), passwd(_passwd),
    state(_state) {};
 
    bool maybeAddClient(Client *);
@@ -147,7 +149,8 @@ private:
    // returns negative value if invalid word
    bool play_score(HandleResponseList& hrl,
                    const Handle& hdl,
-                   const std::vector<PlayMove>&);
+                   const std::vector<PlayMove>&,
+                   const std::string &strJsonMove);
    std::string issue_tiles(unsigned int plIdx,
                            HandleResponseList& hrl);
    bool exchange_tiles(std::string,
