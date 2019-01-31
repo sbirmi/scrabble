@@ -4,6 +4,28 @@
 
 namespace Lobby {
 
+void
+Inst::loadFromStorage() {
+
+   StorageGameList gameList = storage->game_list();
+   for (auto const& game : gameList) {
+      std::cout << "Loading gid " << game.gid << std::endl;
+
+      Game::Inst *gi = new Game::Inst(
+            game.gid, wl, storage,
+            game.maxPlayers,
+            game.gameOver,
+            game.wordsMade, game.passesMade,
+            jsonReader, jsonWriter,
+            game.turnIndex, game.tiles);
+      gameById[game.gid] = gi;
+      nextGameId = std::max(game.gid + 1, nextGameId);
+
+      gi->loadBoardTiles(storage->game_board_tile_list(game.gid));
+      gi->loadPlayers(storage->game_player_list(game.gid));
+   }
+}
+
 std::string
 Inst::stringify(const Json::Value& json) {
    return jsonWriter->write(json);
@@ -200,6 +222,9 @@ Inst::Inst(const WordList *_wl, const std::string _dbfile) :
       jsonReader(new Json::Reader()),
       jsonWriter(new Json::FastWriter()) {
    std::cout << "Lobby created" << std::endl;
+
+   loadFromStorage();
+   std::cout << "Finished loading from storage" << std::endl;
 };
 
 }

@@ -218,9 +218,11 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
          storage->update_player_score(pl->pid, pl->score);
 
          accumulated_score += this_player_score;
+         pl->endScoreAdj = this_player_score;
       }
       if (exhaustedTiles) {
          players[turnIndex]->score += accumulated_score;
+         players[turnIndex]->endScoreAdj = accumulated_score;
          storage->update_player_end_adj_score(players[turnIndex]->pid, accumulated_score);
          storage->update_player_score(players[turnIndex]->pid, players[turnIndex]->score);
       }
@@ -1101,6 +1103,55 @@ Inst::Inst(unsigned int _gid, const WordList *_wl,
       for (unsigned int c=0; c<15; ++c) {
          boardRC[r][c] = ' ';
       }
+   }
+}
+
+Inst::Inst(unsigned int _gid, const WordList *_wl,
+      Storage::Inst *_storage,
+      unsigned int _maxPlayers,
+      bool _gameOver,
+      unsigned int _wordsMade,
+      unsigned int _passesMade,
+      Json::Reader *_jsonReader,
+      Json::FastWriter *_jsonWriter,
+      unsigned int _turnIndex,
+      std::string _tiles) : gid(_gid),
+         wl(_wl), storage(_storage),
+         maxPlayers(_maxPlayers),
+         gameOver(_gameOver),
+         wordsMade(_wordsMade), passesMade(_passesMade),
+         jsonReader(_jsonReader), jsonWriter(_jsonWriter),
+         turnIndex(_turnIndex), tiles(_tiles) {
+
+   for (unsigned int r=0; r<15; ++r) {
+      for (unsigned int c=0; c<15; ++c) {
+         boardRC[r][c] = ' ';
+      }
+   }
+}
+
+void
+Inst::loadBoardTiles(const StorageBoardTileList& boardTileList) {
+   for (auto const& bt : boardTileList) {
+      boardRC[bt.row][bt.col] = bt.letter;
+      boardscoreRC[bt.row][bt.col] = bt.score;
+   }
+}
+
+void
+Inst::loadPlayers(const StoragePlayerList& playerList) {
+   unsigned int plIdx = 0;
+
+   for (auto const& pl : playerList) {
+      assert(plIdx++ == pl.plIdx);
+      players.push_back(new Player(
+               pl.pid,
+               pl.playerName, pl.secretKey,
+               pl.score,
+               pl.hand,
+               (enum ClientState) pl.state,
+               pl.turnKey,
+               pl.endScoreAdj));
    }
 }
 

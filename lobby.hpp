@@ -9,6 +9,7 @@
 #include "conn.hpp"
 #include "game.hpp"
 #include "word_list.hpp"
+#include "storage_common.hpp"
 #include "storage.hpp"
 
 typedef std::map<GameId, Game::Inst *> GameById;
@@ -31,6 +32,8 @@ private:
    HandleSet lobbyHandles;
    // maps handle to game
    HandleGameId gameIdByHdl;
+
+   void loadFromStorage();
 
    // Convenience methods
    std::string stringify(const Json::Value& json);

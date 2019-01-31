@@ -4,6 +4,8 @@
 #include <sqlite3.h>
 #include <string>
 
+#include "storage_common.hpp"
+
 namespace Storage {
 
 class Inst {
@@ -18,14 +20,18 @@ public:
 
 private:
    void insert(const char *cmd);
-   void select(const std::string &cmd,
-               SQLITECALLBACK cb,
-               void *ctx);
+   void fetch(const char *cmd,
+              SQLITECALLBACK cb,
+              void *ctx);
 
    // Helpers used to fetch state
    unsigned int get_sql_player_id(unsigned int gid, unsigned int plIdx);
 
 public:
+   StorageGameList game_list();
+   StorageBoardTileList game_board_tile_list(unsigned int gid);
+   StoragePlayerList game_player_list(unsigned int gid);
+
    // Helpers used by Game::Inst
    void add_game(unsigned int gid,
          unsigned int maxPlayers,

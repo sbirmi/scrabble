@@ -84,14 +84,15 @@ private:
    unsigned int pid;
    HandleClient clients;
    std::string name;
+   std::string passwd;
    int score = 0;
    std::string hand;
-   std::string passwd;
    // Since there maybe multiple clients,
    // we track the state of the game
    // here once a player connects
    enum ClientState state;
    std::string turnkey;
+   int endScoreAdj = 0;
 
 public:
    Player(unsigned int _pid,
@@ -99,7 +100,21 @@ public:
           std::string _passwd,
           enum ClientState _state) :
       pid(_pid), name(_name), passwd(_passwd),
-   state(_state) {};
+      state(_state) {};
+
+   // Used to restore from storage
+   Player(unsigned int _pid,
+          std::string _name,
+          std::string _passwd,
+          int _score,
+          std::string _hand,
+          enum ClientState _state,
+          std::string _turnKey,
+          int _endScoreAdj) :
+      pid(_pid), name(_name), passwd(_passwd),
+      score(_score), hand(_hand),
+      state(_state), turnkey(_turnKey),
+      endScoreAdj(_endScoreAdj) {};
 
    bool maybeAddClient(Client *);
    bool maybeRemoveClient(const Handle &);
@@ -206,6 +221,22 @@ public:
         Storage::Inst *,
         const unsigned int,
         Json::Reader *, Json::FastWriter *);
+
+   // Used to restore from storage
+   Inst(unsigned int _gid, const WordList *,
+        Storage::Inst *,
+        unsigned int _maxPlayers,
+        bool _gameOver,
+        unsigned int _wordsMade,
+        unsigned int _passesMade,
+        Json::Reader *,
+        Json::FastWriter *,
+        unsigned int _turnIndex,
+        std::string tiles);
+
+   // Used for restoring from storage
+   void loadBoardTiles(const StorageBoardTileList& boardTileList);
+   void loadPlayers(const StoragePlayerList& playerList);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);
