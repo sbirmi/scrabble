@@ -6,4 +6,4 @@ libboost-dev
 libboost-system-dev
 libboost-thread-dev
 libwebsocketpp-dev (libwebsocketpp-doc)
-libsqlite3
+libsqlite3{,-dev}
