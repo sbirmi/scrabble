@@ -1101,6 +1101,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json,
       return process_cmd_chat(hdl, json, hrl);
    } else if (cmd == "JOIN") {
       return process_cmd_join(hdl, json, hrl);
+   } else if (cmd == "LIST-MOVES") {
+      return process_cmd_list_moves(hdl, json, hrl);
    } else if (gameOver) {
       std::cout << "Game over. Can't process " << cmd << std::endl;
       return false;
@@ -1110,8 +1112,6 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json,
       return process_cmd_exch(hdl, json, hrl);
    } else if (cmd == "PLAY") {
       return process_cmd_play(hdl, json, hrl);
-   } else if (cmd == "LIST-MOVES") {
-      return process_cmd_list_moves(hdl, json, hrl);
    }
 
    return false;
