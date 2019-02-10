@@ -84,6 +84,15 @@ CLIENT -> SERVER:
       [ "CHAT-BAD", <reason> ]
       [ "CHAT-MSG", <utc-timestamp>, <name>, <message> ]
 
+CLIENT -> SERVER:
+   [ "LIST-MOVES" ]
+
+   SERVER -> CLIENT:
+      [ "LIST-MOVES-OKAY",
+        [ <pl-name-1>, <pl-name-2>, ... ],
+        [ <p1-mv1>, <p2-mv1>, .., <p1-mv2>, <p2-mv2>, ... ] ]
+        Each move description is [ <moveType>, <longestWord>, <score>  ]
+      [ "LIST-MOVES-BAD", <reason> ]
 
 ------------------------------------------------
 

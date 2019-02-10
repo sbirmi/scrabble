@@ -31,6 +31,7 @@ public:
    StorageGameList game_list();
    StorageBoardTileList game_board_tile_list(unsigned int gid);
    StoragePlayerList game_player_list(unsigned int gid);
+   StorageMoveList game_move_list(unsigned int gid);
 
    // Helpers used by Game::Inst
    void add_game(unsigned int gid,

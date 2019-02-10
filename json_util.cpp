@@ -41,12 +41,24 @@ jsonify(const char letter, unsigned int row, unsigned int col) {
    return json;
 }
 
-Json::Value jsonify(const std::string& s1, const std::string& s2,
-                    const std::string& s3, const unsigned int i) {
+Json::Value
+jsonify(const std::string& s1, const std::string& s2,
+        const std::string& s3, const unsigned int i) {
    Json::Value json = jsonify(s1);
    json.append(Json::Value(s2));
    json.append(Json::Value(s3));
    json.append(Json::Value(i));
+   return json;
+}
+
+Json::Value
+jsonify(const unsigned int moveType,
+        const std::string& longestWord,
+        const int score) {
+   Json::Value json;
+   json.append(Json::Value(moveType));
+   json.append(Json::Value(longestWord));
+   json.append(Json::Value(score));
    return json;
 }
 

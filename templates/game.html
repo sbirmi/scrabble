@@ -196,6 +196,32 @@ body {
 	user-select: none;
 }
 
+.movestable {
+   border-spacing: 0px;
+   padding: 0px;
+   position: absolute;
+   display: none;
+   -moz-box-shadow:    3px 3px 3px 3px #666;
+   -webkit-box-shadow: 3px 3px 3px 3px #666;
+   box-shadow: 1px 1px 3px 3px #666;
+   background: white;
+}
+
+.movesheader {
+   font: 1.2em "Open Sans", sans-serif;
+   text-align: left;
+   background: gray;
+   font-weight: bold;
+   width: 200px;
+   border-bottom: solid 3px black;
+}
+
+.movesbody {
+   font: 1.2em "Open Sans", sans-serif;
+   text-align: left;
+   background: white;
+}
+
 -->
 </style>
 
@@ -268,9 +294,18 @@ body {
 <table id="chatPanelUi" border="0px" align="center">
 <tr>
    <td>
-      <span class="text">
-         Tiles in bags: <span id="tilesInBagUi"></span>
-      </span>
+      <table border=0 width=900px>
+      <tr>
+         <td>
+            <span class="text">
+               Tiles in bags: <span id="tilesInBagUi"></span>
+            </span>
+         </td>
+         <td align=right>
+            <input id="movesbutton" class="text" type=button value="MOVES" onclick="click_moves_button();">
+         </td>
+      </tr>
+      </table>
    </td>
 </tr>
 <tr>
@@ -305,6 +340,16 @@ setupRack();
 connectStateTxn(ConnectState.disconnected);
 -->
 </script>
+
+<table id=movesUi class=movestable>
+<thead>
+   <tr>
+   </tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+
 
 </body>
 </html>

@@ -552,6 +552,11 @@ function buttonsDisabled(state) {
    if (state) {
       document.getElementById("blbutton").disabled = state;
    }
+   movesButtonDisabled(state);
+}
+
+function movesButtonDisabled(state) {
+   document.getElementById("movesbutton").disabled = state;
 }
 
 function join_view_buttons_disabled(disabled) {
@@ -639,6 +644,7 @@ function connectStateTxn(state) {
       hide_chat_panel();
       showStatus("disconnected");
       join_view_buttons_disabled(false);
+      hide_moves_ui();
       buttonsDisabled(true);
 
       connect_state = state;
@@ -650,6 +656,7 @@ function connectStateTxn(state) {
       showStatus("connecting");
       join_view_buttons_disabled(true);
       buttonsDisabled(true);
+      movesButtonDisabled(false);
 
       sock = new WebSocket(sock_url);
       sock.onclose = sock_onclose;
@@ -700,6 +707,108 @@ function connectStateTxn(state) {
       hide_connect_panel();
       show_chat_panel();
       join_view_buttons_disabled(true);
+      movesButtonDisabled(false);
       connect_state = state;
    }
+}
+
+// Moves UI helpers
+function show_moves_ui() {
+   var movesUi = document.getElementById("movesUi");
+   movesUi.style.display = "block";
+
+   movesUi.style.top = "30px";
+   movesUi.style.left = "30px";
+
+}
+
+function hide_moves_ui() {
+   document.getElementById("movesUi").style.display = "none";
+}
+
+function click_moves_button() {
+   var movesUi = document.getElementById("movesUi");
+   if (movesUi.style.display == "block") {
+      hide_moves_ui();
+   } else {
+      sock.send(JSON.stringify(["LIST-MOVES"]));
+   }
+}
+
+function moves_ui_clear_moves() {
+   var movesUi = document.getElementById("movesUi");
+   var tbody = movesUi.children[1];
+   while (tbody.firstChild) {
+      tbody.removeChild(tbody.firstChild);
+   }
+}
+
+function moves_ui_clear() {
+   var movesUi = document.getElementById("movesUi");
+   var theadRow = movesUi.children[0].children[0];
+   while (theadRow.firstChild) {
+      theadRow.removeChild(theadRow.firstChild);
+   }
+   moves_ui_clear_moves();
+}
+
+function moves_ui_add_players(players) {
+   var movesUi = document.getElementById("movesUi");
+   var theadRow = movesUi.children[0].children[0];
+   for (var i=0; i<players.length; ++i) {
+      var cell = theadRow.insertCell(i);
+
+      cell.innerHTML = players[i];
+      cell.setAttribute("class", "movesheader noselect");
+   }
+}
+
+function moves_ui_add_new_row() {
+   var movesUi = document.getElementById("movesUi");
+   var tbody = movesUi.children[1];
+   return tbody.insertRow(tbody.children.length);
+}
+
+function moves_ui_add_moves(moves) {
+   var movesUi = document.getElementById("movesUi");
+   var tbody = movesUi.children[1];
+   var lastRow = null;
+
+   var maxPlayers = movesUi.children[0].children[0].children.length;
+   if (maxPlayers == 0) {
+      console.log("Can't add moves until players are added");
+      return;
+   }
+   if (tbody.children.length == 0) {
+      // add a blank row
+      lastRow = moves_ui_add_new_row();
+   } else {
+      lastRow = tbody.children[tbody.children.length-1];
+      if (lastRow.children.length == maxPlayers) {
+         lastRow = moves_ui_add_new_row();
+      }
+   }
+
+   if (moves == null) {
+      return;
+   }
+
+   // Starting adding elements from the last row
+   for (var i=0; i<moves.length; ++i) {
+      var cell = lastRow.insertCell(lastRow.children.length);
+
+      cell.setAttribute("class", "movesbody noselect");
+      if (moves[i][0] == 0) {
+         cell.innerHTML = "<i>passed</i>";
+      } else if (moves[i][0] == 1) {
+         cell.innerHTML = "<i>exchanged</i>";
+      } else {
+         cell.innerHTML = moves[i][2] + " (" + moves[i][1] + ")";
+      }
+
+      if (lastRow.children.length == maxPlayers) {
+         lastRow = moves_ui_add_new_row();
+      }
+   }
+
 }

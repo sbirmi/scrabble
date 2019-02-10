@@ -203,18 +203,34 @@ function clearBoardAndRack() {
 // Socket event handling
 function sock_onerror(event) {
    console.log(event);
+   hide_moves_ui();
    connectStateTxn(ConnectState.disconnected);
 }
 
 function sock_onclose(event) {
    console.log(event);
    connectStateTxn(ConnectState.disconnected);
+   hide_moves_ui();
    showStatus("disconnect: connect error");
+}
+
+function processListMovesOkayMessage(msg) {
+   moves_ui_clear();
+   moves_ui_add_players(msg[1]);
+   moves_ui_add_moves(msg[2]);
+   show_moves_ui();
 }
 
 function sock_onmessage(event) {
    var msg = JSON.parse(event.data);
    console.log("Client state=" + state + " msg=" + msg);
+
+   if (msg[0] == "LIST-MOVES-OKAY") {
+      processListMovesOkayMessage(msg);
+      return;
+   } else if (msg[0] == "LIST-MOVES-BAD") {
+      return;
+   }
 
    if (state == ClientState.start) {
       // ignore all messages

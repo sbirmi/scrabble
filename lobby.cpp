@@ -23,6 +23,7 @@ Inst::loadFromStorage() {
 
       gi->loadBoardTiles(storage->game_board_tile_list(game.gid));
       gi->loadPlayers(storage->game_player_list(game.gid));
+      gi->loadMoves(storage->game_move_list(game.gid));
    }
 }
 

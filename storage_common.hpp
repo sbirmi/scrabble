@@ -43,4 +43,12 @@ typedef struct {
 
 typedef std::vector<StoragePlayer> StoragePlayerList;
 
+typedef struct {
+   unsigned int moveType;
+   std::string longestWord;
+   int score;
+} StorageMove;
+
+typedef std::vector<StorageMove> StorageMoveList;
+
 #endif

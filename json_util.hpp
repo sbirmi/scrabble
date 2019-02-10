@@ -14,5 +14,8 @@ Json::Value jsonify(const char letter, unsigned int row,
                     unsigned int col);
 Json::Value jsonify(const std::string&, const std::string&,
                     const std::string&, const unsigned int);
+Json::Value jsonify(const unsigned int moveType,
+                    const std::string& longestWord,
+                    const int score);
 
 #endif

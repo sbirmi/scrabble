@@ -504,7 +504,7 @@ Inst::play_score(HandleResponseList& hrl,
 
    // calculate score while checking the words are valid
    bool first = true;
-   unsigned int total_score = 0;
+   int total_score = 0;
    std::string word = "";
    std::string longest_word = "";
 
@@ -542,6 +542,8 @@ Inst::play_score(HandleResponseList& hrl,
    }
 
    // Update Moves
+   StorageMove m = {2, longest_word, total_score};
+   moveList.push_back(m);
    storage->add_player_move_play(gid, players[turnIndex]->pid,
          strJsonMove, longest_word, total_score);
 
@@ -646,6 +648,9 @@ Inst::exchange_tiles(std::string _removed,
 
    // remove letters from hand
    players[turnIndex]->hand = handtiles;
+
+   StorageMove m = {1, "", 0};
+   moveList.push_back(m);
    storage->add_player_move_exch(gid, players[turnIndex]->pid, removed);
 
    broadcast_json_message(hrl, jsonify("EXCH-OKAY", _removed),
@@ -921,6 +926,8 @@ Inst::process_cmd_pass(const Handle& hdl, const Json::Value& json,
       return false;
    }
 
+   StorageMove m = {0, "", 0};
+   moveList.push_back(m);
    storage->add_player_move_pass(gid, players[turnIndex]->pid);
 
    // Player turnIndex wants to pass
@@ -1048,6 +1055,42 @@ Inst::process_cmd_play(const Handle& hdl, const Json::Value& cmdJson,
 }
 
 bool
+Inst::process_cmd_list_moves(
+      const Handle& hdl, const Json::Value& cmdJson,
+      HandleResponseList& hrl) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+
+   // parse message size etc
+   if (cmdJson.size() > 1) {
+      std::cerr << "message error with LIST-MOVES" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("LIST-MOVES-BAD", "message format")));
+      return false;
+   }
+   if (players.size() != maxPlayers) {
+      std::cerr << "game not started yet" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("LIST-MOVES-BAD", "game not started yet")));
+      return false;
+   }
+
+   Json::Value moveListJson = jsonify("LIST-MOVES-OKAY");
+   Json::Value movePlayers;
+   for (unsigned int i=0; i<players.size(); ++i) {
+      int plIdx = (turnIndex + i - moveList.size()) % maxPlayers;
+      movePlayers.append(Json::Value(players[plIdx]->name));
+   }
+   moveListJson.append(movePlayers);
+   Json::Value movesJson;
+   for (const auto m : moveList) {
+      Json::Value moveJson = jsonify(m.moveType, m.longestWord, m.score);
+      movesJson.append(moveJson);
+   }
+   moveListJson.append(movesJson);
+   hrl.push_back(generateResponse(hdl, moveListJson));
+
+   return true;
+}
+
+bool
 Inst::process_cmd(const Handle& hdl, const Json::Value &json,
                   HandleResponseList& hrl) {
    auto cmd = json[0].asString();
@@ -1067,6 +1110,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json,
       return process_cmd_exch(hdl, json, hrl);
    } else if (cmd == "PLAY") {
       return process_cmd_play(hdl, json, hrl);
+   } else if (cmd == "LIST-MOVES") {
+      return process_cmd_list_moves(hdl, json, hrl);
    }
 
    return false;
@@ -1152,6 +1197,13 @@ Inst::loadPlayers(const StoragePlayerList& playerList) {
                (enum ClientState) pl.state,
                pl.turnKey,
                pl.endScoreAdj));
+   }
+}
+
+void
+Inst::loadMoves(const StorageMoveList& ml) {
+   for (auto const& m : ml) {
+      moveList.push_back(m);
    }
 }
 

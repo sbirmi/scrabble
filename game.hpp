@@ -142,6 +142,7 @@ private:
 
    unsigned int turnIndex = 0;
    std::string tiles;
+   StorageMoveList moveList;
 
    Json::Value get_score_json();
    Json::Value get_player_turn_message();
@@ -210,6 +211,10 @@ private:
          const Handle& hdl,
          const Json::Value &cmdJson,
          HandleResponseList& hrl);
+   bool process_cmd_list_moves(
+         const Handle& hdl,
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
 
    // convenience methods
    std::string stringify(const Json::Value& json);
@@ -237,6 +242,7 @@ public:
    // Used for restoring from storage
    void loadBoardTiles(const StorageBoardTileList& boardTileList);
    void loadPlayers(const StoragePlayerList& playerList);
+   void loadMoves(const StorageMoveList& moveList);
 
    void handle_appear(const Handle &hdl);
    void handle_disappear(const Handle &hdl);

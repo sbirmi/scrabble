@@ -169,6 +169,30 @@ Inst::game_player_list(unsigned int gid) {
    return pl;
 }
 
+int
+get_sql_game_move_list_cb(void *data, int argc, char **argv, char **argName) {
+   StorageMoveList *ml = (StorageMoveList *) data;
+   StorageMove move = {
+      atou(argv[0]), // moveType
+      (argv[1]) ? std::string(argv[1]) : std::string(""), // longestWord
+      atoi(argv[2]) // score
+   };
+   ml->push_back(move);
+   return 0;
+}
+
+StorageMoveList
+Inst::game_move_list(unsigned int gid) {
+   StorageMoveList ml;
+   char *cmd = sqlite3_mprintf("select "
+         "moveType, longestWord, score "
+         "from Moves where gid=%u;",
+         gid);
+   fetch(cmd, get_sql_game_move_list_cb, &ml);
+   sqlite3_free(cmd);
+   return ml;
+}
+
 // Helpers used by Game::Inst
 void
 Inst::add_game(unsigned int gid,
