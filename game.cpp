@@ -227,11 +227,13 @@ Inst::next_turn(HandleResponseList &hrl, bool pass) {
          storage->update_player_score(players[turnIndex]->pid, players[turnIndex]->score);
       }
 
+      turnIndex = (turnIndex + 1) % maxPlayers;
+      storage->update_game_turn_index(gid, turnIndex);
+
       broadcast_score_messages(hrl);
       broadcast_json_message(hrl, jsonify("GAME-OVER"));
       return;
    }
-
 
    turnIndex = (turnIndex + 1) % maxPlayers;
    storage->update_game_turn_index(gid, turnIndex);
