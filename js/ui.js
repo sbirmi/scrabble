@@ -726,9 +726,14 @@ function hide_moves_ui() {
    document.getElementById("movesUi").style.display = "none";
 }
 
+function is_moves_ui_visible() {
+   var movesUi = document.getElementById("movesUi");
+   return movesUi.style.display == "block";
+}
+
 function click_moves_button() {
    var movesUi = document.getElementById("movesUi");
-   if (movesUi.style.display == "block") {
+   if (is_moves_ui_visible()) {
       hide_moves_ui();
    } else {
       sock.send(JSON.stringify(["LIST-MOVES"]));

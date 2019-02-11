@@ -7,6 +7,9 @@ function processGameOverMessage(msg) {
 }
 
 function processExchOkayMessage(msg) {
+   if (is_moves_ui_visible()) {
+      moves_ui_add_moves([[1, "", 0]]);
+   }
    if (myName != currTurnName) {
       chat_game_message(currTurnName + " exchanged letters");
       return;
@@ -38,10 +41,16 @@ function processExchOkayMessage(msg) {
 
 function processPassOkayMessage(msg) {
    chat_game_message(currTurnName + " passed");
+   if (is_moves_ui_visible()) {
+      moves_ui_add_moves([[0, "", 0]]);
+   }
 }
 
 function processPlayOkayMessage(msg) {
    if (myName != currTurnName) {
+      if (is_moves_ui_visible()) {
+         moves_ui_add_moves([[2, msg[2], msg[3]]]);
+      }
       chat_game_message(currTurnName + " played " + msg[2] + " (" + msg[3] + ")");
       return;
    }
@@ -66,6 +75,9 @@ function processPlayOkayMessage(msg) {
             break;
          }
       }
+   }
+   if (is_moves_ui_visible()) {
+      moves_ui_add_moves([[2, msg[2], msg[3]]]);
    }
    chat_game_message("Word made '" + msg[2] + "' score " + msg[3]);
 }
