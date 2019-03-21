@@ -401,8 +401,10 @@ function click_pass_button() {
    if (state != ClientState.turn) {
       return;
    }
-   sock.send(JSON.stringify(["PASS", turnKey]));
-   state = ClientState.wait_turn_ack;
+   if (confirm("Pass?")) {
+      sock.send(JSON.stringify(["PASS", turnKey]));
+      state = ClientState.wait_turn_ack;
+   }
 }
 
 function click_play_button() {
