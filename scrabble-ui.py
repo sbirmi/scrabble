@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 
@@ -66,8 +66,8 @@ def main():
     global ws_port
     ws_port = args.wsport
 
-    print "HTTP port=%d" % args.httpport
-    print "Websocket (server) port=%d" % ws_port
+    print("HTTP port=%d" % args.httpport)
+    print("Websocket (server) port=%d" % ws_port)
     app.run(host="0.0.0.0", port=args.httpport, debug=True)
 
 if __name__ == "__main__":
