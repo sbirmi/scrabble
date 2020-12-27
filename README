@@ -9,3 +9,10 @@ libwebsocketpp-dev (libwebsocketpp-doc)
 libsqlite3{,-dev}
 
 A file named wordlist.txt is also needed which has the list of all valid words in upper case.
+
+Running
+-------
+```
+$ ./game-server 5051 games.sqlite3
+$ ./scrabble-ui.py
+```
