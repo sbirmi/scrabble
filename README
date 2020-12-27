@@ -7,3 +7,5 @@ libboost-system-dev
 libboost-thread-dev
 libwebsocketpp-dev (libwebsocketpp-doc)
 libsqlite3{,-dev}
+
+A file named wordlist.txt is also needed which has the list of all valid words in upper case.
