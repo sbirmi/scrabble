@@ -1,0 +1,16 @@
+# Build artifacts
+*.o
+*.gcno
+*.gcda
+*.gcov
+
+# Test artifacts
+test_wordlist.txt
+tests/test_wordlist.txt
+tests/test_*.sqlite3
+
+# Temporary wordlist files
+wordlist.txt
+
+# Game database
+games.sqlite3
