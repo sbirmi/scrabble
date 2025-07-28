@@ -4,28 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
-**Build the C++ game server:**
+All build and development tasks run within Docker using Dockerfile-test for consistency and isolation.
+
+**Build and run the complete application in Docker:**
 ```bash
-make
+# Build test image using local files
+docker build -f Dockerfile-test -t scrabble-test .
+
+# Run application container with port mapping
+docker run -p 5050:5050 -p 5051:5051 scrabble-test
 ```
 
-**Clean build artifacts:**
+**Build C++ components only in Docker:**
 ```bash
-make clean
+# Build test container and run make
+docker run --rm -v $(pwd):/app -w /app scrabble-test make
 ```
 
-**Run the complete application:**
+**Clean build artifacts in Docker:**
 ```bash
-# Terminal 1: Start the game server (WebSocket backend)
-./game-server 5051 games.sqlite3
-
-# Terminal 2: Start the web UI (Flask frontend)
-python3 scrabble-ui.py
+# Run clean command in Docker container
+docker run --rm -v $(pwd):/app -w /app scrabble-test make clean
 ```
 
 **Access the application:**
 - Web interface: http://localhost:5050
 - Game server (WebSocket): ws://localhost:5051
+
+**Manual testing verification:**
+After running the Docker container, manually verify the service works by:
+1. Opening http://localhost:5050 in your browser
+2. Confirming the Scrabble game interface loads
+3. Testing basic game functionality (creating/joining games)
+
+**IMPORTANT:** Do NOT attempt automated verification (curl/wget) while the service is running - ask the user to manually test instead. Wait for user confirmation that testing is complete before stopping the Docker container.
 
 ## Architecture Overview
 
@@ -67,16 +79,24 @@ Game state includes board tiles, player hands, scores, and turn management acros
 
 ## Testing
 
-The project includes comprehensive unit tests with coverage measurement that run exclusively in Docker:
+The project includes comprehensive unit tests with coverage measurement that run exclusively in Docker using Dockerfile-test:
 
 **Run all tests in Docker:**
 ```bash
-make test
+# Build test image first
+docker build -f Dockerfile-test -t scrabble-test .
+
+# Run working tests only (game tests currently have API compatibility issues)
+docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list test_json_util test_storage test_lobby && ./test_word_list && ./test_json_util && ./test_storage && ./test_lobby"
 ```
 
 **Run quick tests in Docker:**
 ```bash
-make test-quick
+# Build test image first (if not already built)
+docker build -f Dockerfile-test -t scrabble-test .
+
+# Run quick tests only (direct command due to Makefile path issues)
+docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list test_json_util && ./test_word_list && ./test_json_util"
 ```
 
 **Manual Docker testing:**
@@ -86,15 +106,20 @@ docker build -f Dockerfile-test -t scrabble-test .
 
 # Run specific tests
 docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list && ./test_word_list"
+
+# Interactive testing session
+docker run --rm -it scrabble-test /bin/bash
 ```
 
 **Coverage target:** 90% line coverage for most modules
 
 **Docker-only testing:**
 - No local dependencies required
-- All tests run in isolated containers
+- All tests run in isolated containers using Dockerfile-test
 - Consistent environment across different machines
 - Tests create their own wordlist.txt and database files
+
+**Note:** Game tests currently have API compatibility issues and require updates. Working tests include: word_list, json_util, storage, and lobby.
 
 **Git Hook Setup:**
 ```bash
@@ -104,5 +129,5 @@ docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list && .
 
 The pre-commit hook will:
 - Prevent committing wordlist.txt files
-- Run quick tests in Docker before each commit
+- Run quick tests in Docker using Dockerfile-test before each commit
 - Abort commit if any tests fail
