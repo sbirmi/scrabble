@@ -1082,7 +1082,7 @@ Inst::process_cmd_list_moves(
    }
    moveListJson.append(movePlayers);
    Json::Value movesJson;
-   for (const auto m : moveList) {
+   for (const auto& m : moveList) {
       Json::Value moveJson = jsonify(m.moveType, m.longestWord, m.score);
       movesJson.append(moveJson);
    }
