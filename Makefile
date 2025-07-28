@@ -38,5 +38,14 @@ game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_ut
 		-o game-server
 
 
+test:
+	@echo "Running unit tests..."
+	@cd tests && ./run_tests.sh
+
+test-setup:
+	@echo "Setting up test environment..."
+	@sudo apt-get update && sudo apt-get install -y libgtest-dev gcov bc
+
 clean:
 	rm -f game-server *.o
+	@cd tests && make clean 2>/dev/null || true

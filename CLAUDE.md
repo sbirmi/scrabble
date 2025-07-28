@@ -64,3 +64,35 @@ The client-server communication uses JSON messages over WebSocket for:
 - Real-time game state updates
 
 Game state includes board tiles, player hands, scores, and turn management across multiple concurrent games.
+
+## Testing
+
+The project includes comprehensive unit tests with coverage measurement:
+
+**Run all tests:**
+```bash
+make test
+```
+
+**Run tests with coverage:**
+```bash
+cd tests
+./run_tests.sh
+```
+
+**Individual test modules:**
+```bash
+cd tests
+make test_word_list && ./test_word_list
+make test_json_util && ./test_json_util  
+make test_storage && ./test_storage
+make test_game && ./test_game
+make test_lobby && ./test_lobby
+```
+
+**Coverage target:** 90% line coverage for most modules
+
+**Test dependencies:**
+- libgtest-dev: Google Test framework
+- gcov: Coverage analysis (part of gcc)
+- bc: Calculator for coverage percentage
