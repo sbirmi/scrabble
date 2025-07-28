@@ -67,32 +67,42 @@ Game state includes board tiles, player hands, scores, and turn management acros
 
 ## Testing
 
-The project includes comprehensive unit tests with coverage measurement:
+The project includes comprehensive unit tests with coverage measurement that run exclusively in Docker:
 
-**Run all tests:**
+**Run all tests in Docker:**
 ```bash
 make test
 ```
 
-**Run tests with coverage:**
+**Run quick tests in Docker:**
 ```bash
-cd tests
-./run_tests.sh
+make test-quick
 ```
 
-**Individual test modules:**
+**Manual Docker testing:**
 ```bash
-cd tests
-make test_word_list && ./test_word_list
-make test_json_util && ./test_json_util  
-make test_storage && ./test_storage
-make test_game && ./test_game
-make test_lobby && ./test_lobby
+# Build test image
+docker build -f Dockerfile-test -t scrabble-test .
+
+# Run specific tests
+docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list && ./test_word_list"
 ```
 
 **Coverage target:** 90% line coverage for most modules
 
-**Test dependencies:**
-- libgtest-dev: Google Test framework
-- gcov: Coverage analysis (part of gcc)
-- bc: Calculator for coverage percentage
+**Docker-only testing:**
+- No local dependencies required
+- All tests run in isolated containers
+- Consistent environment across different machines
+- Tests create their own wordlist.txt and database files
+
+**Git Hook Setup:**
+```bash
+# Set up pre-commit hook to run tests automatically in Docker
+./setup-git-hooks.sh
+```
+
+The pre-commit hook will:
+- Prevent committing wordlist.txt files
+- Run quick tests in Docker before each commit
+- Abort commit if any tests fail

@@ -39,12 +39,18 @@ game-server: broadcast_server.o game-server.o game.o word_list.o lobby.o json_ut
 
 
 test:
-	@echo "Running unit tests..."
-	@cd tests && ./run_tests.sh
+	@echo "Running unit tests in Docker..."
+	@cp ../wordlist.txt . 2>/dev/null || true
+	@docker build -f Dockerfile-test -t scrabble-test . > /dev/null 2>&1
+	@rm -f wordlist.txt
+	@docker run --rm scrabble-test /bin/bash -c "cd tests && ./run_tests.sh"
 
-test-setup:
-	@echo "Setting up test environment..."
-	@sudo apt-get update && sudo apt-get install -y libgtest-dev gcov bc
+test-quick:
+	@echo "Running quick tests (word_list and json_util) in Docker..."
+	@cp ../wordlist.txt . 2>/dev/null || true
+	@docker build -f Dockerfile-test -t scrabble-test . > /dev/null 2>&1
+	@rm -f wordlist.txt
+	@docker run --rm scrabble-test /bin/bash -c "cd tests && make test_word_list test_json_util && ./test_word_list && ./test_json_util"
 
 clean:
 	rm -f game-server *.o
