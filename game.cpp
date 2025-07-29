@@ -1093,6 +1093,75 @@ Inst::process_cmd_list_moves(
 }
 
 bool
+Inst::process_cmd_check(const Handle& hdl, const Json::Value& cmdJson,
+                        HandleResponseList& hrl) {
+   std::cout << __PRETTY_FUNCTION__ << std::endl;
+   
+   // Validate message format - should be ["CHECK", "word"]
+   if (cmdJson.size() != 2 || !cmdJson[1].isString()) {
+      std::cerr << "message error: CHECK command should have exactly 2 elements with string word" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("CHECK-BAD", "Invalid format")));
+      return false;
+   }
+   
+   // Check access control - only players and viewers can use this command
+   if (handleMode[hdl] == ModeIdle) {
+      std::cerr << "CHECK command denied: client not in game" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("CHECK-BAD", "Access denied")));
+      return false;
+   }
+   
+   std::string word = cmdJson[1].asString();
+   
+   // Trim whitespace
+   size_t start = word.find_first_not_of(" \t");
+   size_t end = word.find_last_not_of(" \t");
+   
+   if (start == std::string::npos) {
+      // Empty word after trimming
+      std::cerr << "CHECK command error: empty word" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("CHECK-BAD", "Empty word")));
+      return false;
+   }
+   
+   std::string trimmedWord = word.substr(start, end - start + 1);
+   
+   // Check for multiple words (contains spaces after trimming)
+   if (trimmedWord.find(' ') != std::string::npos || trimmedWord.find('\t') != std::string::npos) {
+      std::cerr << "CHECK command error: multiple words provided" << std::endl;
+      hrl.push_back(generateResponse(hdl, jsonify("CHECK-BAD", "Only one word allowed")));
+      return false;
+   }
+   
+   // Convert to uppercase for dictionary lookup
+   std::string uppercaseWord = trimmedWord;
+   for (size_t i = 0; i < uppercaseWord.length(); i++) {
+      uppercaseWord[i] = toupper(uppercaseWord[i]);
+   }
+   
+   // Check word validity using WordList
+   bool isValid = wl->is_valid(uppercaseWord);
+   
+   // Generate response based on validity
+   std::string message;
+   if (isValid) {
+      message = "✓ '" + uppercaseWord + "' is a valid word";
+   } else {
+      message = "✗ '" + uppercaseWord + "' is not a valid word";
+   }
+   
+   // Send CHECK-OKAY response with validity flag
+   Json::Value response;
+   response.append("CHECK-OKAY");
+   response.append(word);
+   response.append(isValid);
+   response.append(message);
+   hrl.push_back(generateResponse(hdl, response));
+   
+   return true;
+}
+
+bool
 Inst::process_cmd(const Handle& hdl, const Json::Value &json,
                   HandleResponseList& hrl) {
    auto cmd = json[0].asString();
@@ -1105,6 +1174,8 @@ Inst::process_cmd(const Handle& hdl, const Json::Value &json,
       return process_cmd_join(hdl, json, hrl);
    } else if (cmd == "LIST-MOVES") {
       return process_cmd_list_moves(hdl, json, hrl);
+   } else if (cmd == "CHECK") {
+      return process_cmd_check(hdl, json, hrl);
    } else if (gameOver) {
       std::cout << "Game over. Can't process " << cmd << std::endl;
       return false;
@@ -1306,4 +1377,20 @@ Inst::status() {
    }
 
    return json;
+}
+
+// Test helper methods
+bool
+Inst::test_word_check(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl) {
+   return process_cmd_check(hdl, cmdJson, hrl);
+}
+
+void
+Inst::test_join_player(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl) {
+   process_cmd_join(hdl, cmdJson, hrl);
+}
+
+void
+Inst::test_set_viewer(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl) {
+   process_cmd_view(hdl, cmdJson, hrl);
 }

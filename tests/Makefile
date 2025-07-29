@@ -9,7 +9,7 @@ TEST_SOURCES = ../word_list.cpp ../json_util.cpp ../storage.cpp ../game.cpp ../l
 TEST_OBJECTS = $(TEST_SOURCES:.cpp=.o)
 
 # Test files
-TEST_FILES = test_word_list.cpp test_json_util.cpp test_storage.cpp test_game.cpp test_lobby.cpp
+TEST_FILES = test_word_list.cpp test_json_util.cpp test_storage.cpp test_game.cpp test_lobby.cpp test_word_check.cpp
 TEST_EXECUTABLES = $(TEST_FILES:.cpp=)
 
 .PHONY: all test coverage clean setup
@@ -35,6 +35,9 @@ test_game: test_game.cpp ../game.o ../storage.o ../word_list.o ../json_util.o
 
 test_lobby: test_lobby.cpp ../lobby.o ../storage.o ../json_util.o
 	$(CXX) $(CXXFLAGS) -o $@ $< ../lobby.o ../storage.o ../json_util.o $(LIBS)
+
+test_word_check: test_word_check.cpp ../game.o ../storage.o ../word_list.o ../json_util.o
+	$(CXX) $(CXXFLAGS) -o $@ $< ../game.o ../storage.o ../word_list.o ../json_util.o $(LIBS)
 
 # Compile source files with coverage
 ../%.o: ../%.cpp

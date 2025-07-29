@@ -215,6 +215,10 @@ private:
          const Handle& hdl,
          const Json::Value &cmdJson,
          HandleResponseList& hrl);
+   bool process_cmd_check(
+         const Handle& hdl,
+         const Json::Value &cmdJson,
+         HandleResponseList& hrl);
 
    // convenience methods
    std::string stringify(const Json::Value& json);
@@ -254,6 +258,11 @@ public:
          HandleResponseList& hrl);
 
    Json::Value status();
+
+   // Test helper methods
+   bool test_word_check(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl);
+   void test_join_player(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl);
+   void test_set_viewer(const Handle& hdl, const Json::Value& cmdJson, HandleResponseList& hrl);
 };
 
 }
