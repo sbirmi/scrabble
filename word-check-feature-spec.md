@@ -173,6 +173,20 @@ This specification defines a new feature allowing players to verify word validit
 ### Performance Tests
 - Concurrent user handling
 
+### Manual Testing Setup
+**IMPORTANT**: Before building the Docker test image, ensure wordlist.txt is copied to the scrabble directory:
+
+```bash
+# Copy wordlist from parent directory for Docker testing
+cp /Users/sharad/dev/scrabble/wordlist.txt /Users/sharad/dev/scrabble/scrabble/wordlist.txt
+
+# Build and run test container
+docker build -f Dockerfile-test -t scrabble-test .
+docker run -p 5050:5050 -p 5051:5051 scrabble-test
+```
+
+The wordlist.txt file is required for proper word validation during testing.
+
 ## Future Enhancements
 
 1. **Batch Checking**: Allow checking multiple words

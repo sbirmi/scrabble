@@ -602,6 +602,29 @@ function chat_add_message(ts, sender, message) {
    row.scrollIntoView(false);
 }
 
+function chat_add_message_styled(ts, sender, message, cssClass) {
+   var tbody = document.getElementById("chatWindow").children[0];
+
+   var row = tbody.insertRow(tbody.children.length);
+
+   var cell = row.insertCell(0);
+   cell.innerHTML = ts;
+   cell.style.verticalAlign = "top";
+
+   var cell = row.insertCell(1);
+   cell.innerHTML = sender + ":";
+   cell.style.verticalAlign = "top";
+
+   var cell = row.insertCell(2);
+   cell.innerHTML = message;
+   cell.style.verticalAlign = "top";
+   if (cssClass) {
+      cell.className = cssClass;
+   }
+
+   row.scrollIntoView(false);
+}
+
 function chat_game_message(message) {
    var dt = new Date();
    var hours = dt.getHours();
@@ -632,6 +655,34 @@ function send_chat_message() {
    if (!chatInputUi.value) {
       return;
    }
+   
+   var message = chatInputUi.value.trim();
+   
+   // Check if this is a !check command
+   if (message.toLowerCase().startsWith("!check ")) {
+      // Extract the word after "!check "
+      var word = message.substring(7).trim(); // Remove "!check " prefix
+      
+      if (!word) {
+         chat_game_message("Error: No word provided for check command");
+         chatInputUi.value = "";
+         return;
+      }
+      
+      // Check for multiple words
+      if (word.indexOf(' ') !== -1 || word.indexOf('\t') !== -1) {
+         chat_game_message("Error: Only one word allowed for check command");
+         chatInputUi.value = "";
+         return;
+      }
+      
+      console.log("CHECK command: " + word);
+      sock.send(JSON.stringify(["CHECK", word]));
+      chatInputUi.value = "";
+      return;
+   }
+   
+   // Regular chat message
    console.log("CHAT-SEND: " + chatInputUi.value);
    sock.send(JSON.stringify( [ "CHAT-SEND", chatInputUi.value ] ));
    chatInputUi.value = "";

@@ -233,6 +233,46 @@ function processListMovesOkayMessage(msg) {
    show_moves_ui();
 }
 
+function processCheckOkayMessage(msg) {
+   // msg format: ["CHECK-OKAY", word, valid, message]
+   var word = msg[1];
+   var valid = msg[2];
+   var message = msg[3];
+   
+   // Display the result in chat with appropriate styling
+   if (valid) {
+      chat_add_message_styled(getCurrentTimeString(), "Word Check", message, "word-check-valid");
+   } else {
+      chat_add_message_styled(getCurrentTimeString(), "Word Check", message, "word-check-invalid");
+   }
+}
+
+function processCheckBadMessage(msg) {
+   // msg format: ["CHECK-BAD", error_message]
+   var errorMessage = msg[1];
+   
+   // Display error in chat
+   chat_add_message_styled(getCurrentTimeString(), "Word Check", "Error: " + errorMessage, "word-check-error");
+}
+
+function getCurrentTimeString() {
+   var dt = new Date();
+   var hours = dt.getHours();
+   var ampm = "AM";
+   if (hours > 12) {
+      hours -= 12;
+      ampm = "PM";
+   }
+   if (hours === 0) {
+      hours = 12;
+   }
+   var minutes = dt.getMinutes();
+   minutes = minutes < 10 ? '0' + minutes : minutes;
+   var seconds = dt.getSeconds();
+   seconds = seconds < 10 ? '0' + seconds : seconds;
+   return hours + ":" + minutes + ":" + seconds + " " + ampm;
+}
+
 function sock_onmessage(event) {
    var msg = JSON.parse(event.data);
    console.log("Client state=" + state + " msg=" + msg);
@@ -346,6 +386,14 @@ function sock_onmessage(event) {
    } else if (msg[0] == "PASS-OKAY") {
       state = ClientState.wait_turn;
       processPassOkayMessage(msg);
+      return;
+
+   } else if (msg[0] == "CHECK-OKAY") {
+      processCheckOkayMessage(msg);
+      return;
+
+   } else if (msg[0] == "CHECK-BAD") {
+      processCheckBadMessage(msg);
       return;
 
    }
